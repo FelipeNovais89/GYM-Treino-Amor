@@ -21,8 +21,11 @@ GIFS = {
     "leg_raise": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Leg-Raise.gif",
     "cable_kickback": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Hip-Extension.gif",
 
-    # NOVOS GIFS QUE FALTAVAM
-    "leg_curl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Seated-Leg-Curl.gif",
+    # flexoras (novos)
+    "leg_curl_lying": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Leg-Curl.gif",
+    "leg_curl_seated": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Seated-Leg-Curl.gif",
+
+    # outros que já tínhamos
     "barbell_curl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Curl.gif",
     "alt_db_curl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Alternating-Biceps-Curl.gif",
     "seated_calf": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Seated-Calf-Raise.gif",
@@ -41,7 +44,8 @@ WORKOUTS = {
         ("Glúteo e Posterior", "Búlgaro", "3x12", GIFS["bulgaro"]),
         ("Glúteo e Posterior", "Agachamento livre", "3x12", GIFS["squat"]),
         ("Glúteo e Posterior", "Stiff unilateral", "4x12", GIFS["stiff"]),
-        ("Glúteo e Posterior", "Mesa flexora", "4x12", GIFS["leg_curl"]),
+        # Mesa flexora com variações
+        ("Glúteo e Posterior", "Mesa flexora", "4x12", GIFS["leg_curl_lying"]),
     ],
     "Terça": [
         ("Costas / Bíceps / ABS / Panturrilha", "Puxada alta aberta", "3x12", GIFS["lat_pulldown"]),
@@ -82,6 +86,15 @@ WORKOUTS = {
     ],
 }
 
+# ---------- Variações de exercício (ex.: Mesa x Cadeira flexora) ----------
+# chave = nome base do exercício em WORKOUTS
+ALT_EXERCISES = {
+    "Mesa flexora": [
+        ("Mesa flexora", GIFS["leg_curl_lying"]),
+        ("Cadeira flexora", GIFS["leg_curl_seated"]),
+    ],
+}
+
 LOG_FILE = "treino_log.csv"
 
 st.sidebar.title("Planner de Treinos")
@@ -95,22 +108,42 @@ else:
     exercises = WORKOUTS[day]
     st.subheader(f"Treino de {day}")
 
-    for idx, (group, name, reps, gif_url) in enumerate(exercises):
+    for idx, (group, name, reps, gif_url_default) in enumerate(exercises):
+        alt_key = f"{day}_{idx}_alt"
+        alt_options = ALT_EXERCISES.get(name, None)
+
+        # define nome e gif "ativos" (se tiver variação, usa o selecionado)
+        if alt_options:
+            labels = [opt[0] for opt in alt_options]
+            if alt_key not in st.session_state:
+                st.session_state[alt_key] = labels[0]
+            selected_label = st.session_state[alt_key]
+            # procura o gif correspondente ao rótulo escolhido
+            selected_gif = gif_url_default
+            for lbl, gif_alt in alt_options:
+                if lbl == selected_label:
+                    selected_gif = gif_alt
+                    break
+        else:
+            labels = None
+            selected_label = name
+            selected_gif = gif_url_default
+
+        # título sempre mostra o nome base; a variação fica no select
         st.markdown(f"### {name}")
         st.caption(group)
 
         cols = st.columns([2, 1])
 
         with cols[0]:
-            if gif_url:
-                st.image(gif_url, width=260)
+            if selected_gif:
+                st.image(selected_gif, width=260)
             else:
                 st.info("Sem GIF disponível")
 
         weight_key = f"{day}_{idx}_peso"
         done_key = f"{day}_{idx}_feito"
 
-        # inicializa estado apenas se não existir
         if weight_key not in st.session_state:
             st.session_state[weight_key] = 0.0
         if done_key not in st.session_state:
@@ -118,6 +151,14 @@ else:
 
         with cols[1]:
             st.write(f"● Séries x Reps: **{reps}**")
+
+            if alt_options:
+                st.selectbox(
+                    "Variação",
+                    options=labels,
+                    key=alt_key,
+                )
+
             st.number_input(
                 "Peso (kg)",
                 min_value=0.0,
@@ -135,16 +176,24 @@ else:
     with c1:
         if st.button("💾 Salvar treino"):
             rows = []
-            for idx, (group, name, reps, gif_url) in enumerate(exercises):
+            for idx, (group, name, reps, gif_url_default) in enumerate(exercises):
+                alt_key = f"{day}_{idx}_alt"
+                alt_options = ALT_EXERCISES.get(name, None)
+                if alt_options:
+                    log_name = st.session_state.get(alt_key, name)
+                else:
+                    log_name = name
+
                 rows.append({
                     "timestamp": datetime.now().isoformat(timespec="seconds"),
                     "dia": day,
                     "grupo": group,
-                    "exercicio": name,
+                    "exercicio": log_name,  # salva a variação escolhida
                     "series_reps": reps,
                     "peso_kg": st.session_state.get(f"{day}_{idx}_peso", 0.0),
                     "feito": bool(st.session_state.get(f"{day}_{idx}_feito", False)),
                 })
+
             df_new = pd.DataFrame(rows)
             if os.path.exists(LOG_FILE):
                 df_old = pd.read_csv(LOG_FILE)
