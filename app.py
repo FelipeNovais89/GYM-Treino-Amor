@@ -21,14 +21,18 @@ GIFS = {
     "leg_raise": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Leg-Raise.gif",
     "cable_kickback": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Hip-Extension.gif",
 
-    # flexoras (novos)
+    # flexoras (dois tipos)
     "leg_curl_lying": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Leg-Curl.gif",
     "leg_curl_seated": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Seated-Leg-Curl.gif",
 
-    # outros que já tínhamos
+    # rosca alternada - link que você mandou
+    "alt_db_curl": "https://fitnessprogramer.com/wp-content/uploads/2022/06/Seated-dumbbell-alternating-curl.gif",
+
+    # panturrilha sentada - link que você mandou
+    "seated_calf": "https://fitnessprogramer.com/wp-content/uploads/2021/06/Lever-Seated-Calf-Raise.gif",
+
+    # outros
     "barbell_curl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Curl.gif",
-    "alt_db_curl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Alternating-Biceps-Curl.gif",
-    "seated_calf": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Seated-Calf-Raise.gif",
     "leg_extension": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Extension.gif",
     "triceps_bar": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Triceps-Pushdown.gif",
     "triceps_rope": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Triceps-Pushdown.gif",
@@ -44,7 +48,7 @@ WORKOUTS = {
         ("Glúteo e Posterior", "Búlgaro", "3x12", GIFS["bulgaro"]),
         ("Glúteo e Posterior", "Agachamento livre", "3x12", GIFS["squat"]),
         ("Glúteo e Posterior", "Stiff unilateral", "4x12", GIFS["stiff"]),
-        # Mesa flexora com variações
+        # Mesa flexora com variações (mesa/cadeira)
         ("Glúteo e Posterior", "Mesa flexora", "4x12", GIFS["leg_curl_lying"]),
     ],
     "Terça": [
@@ -86,8 +90,7 @@ WORKOUTS = {
     ],
 }
 
-# ---------- Variações de exercício (ex.: Mesa x Cadeira flexora) ----------
-# chave = nome base do exercício em WORKOUTS
+# ---------- Variações (por enquanto só flexora) ----------
 ALT_EXERCISES = {
     "Mesa flexora": [
         ("Mesa flexora", GIFS["leg_curl_lying"]),
@@ -96,6 +99,15 @@ ALT_EXERCISES = {
 }
 
 LOG_FILE = "treino_log.csv"
+
+# Histórico para recuperar último peso / variação
+if os.path.exists(LOG_FILE):
+    try:
+        df_history = pd.read_csv(LOG_FILE)
+    except Exception:
+        df_history = None
+else:
+    df_history = None
 
 st.sidebar.title("Planner de Treinos")
 day = st.sidebar.selectbox("Selecione o dia", ["Selecione..."] + list(WORKOUTS.keys()))
@@ -112,13 +124,26 @@ else:
         alt_key = f"{day}_{idx}_alt"
         alt_options = ALT_EXERCISES.get(name, None)
 
-        # define nome e gif "ativos" (se tiver variação, usa o selecionado)
+        # --- define variação selecionada (para exercícios com alternativa) ---
         if alt_options:
             labels = [opt[0] for opt in alt_options]
+
+            # tenta puxar do histórico se ainda não tem no session_state
             if alt_key not in st.session_state:
-                st.session_state[alt_key] = labels[0]
+                selected_label = labels[0]
+                if df_history is not None:
+                    df_filt = df_history[
+                        (df_history["dia"] == day) &
+                        (df_history["exercicio"].isin(labels))
+                    ]
+                    if not df_filt.empty:
+                        df_filt = df_filt.sort_values("timestamp")
+                        selected_label = df_filt.iloc[-1]["exercicio"]
+                st.session_state[alt_key] = selected_label
+
             selected_label = st.session_state[alt_key]
-            # procura o gif correspondente ao rótulo escolhido
+
+            # acha o GIF da variação
             selected_gif = gif_url_default
             for lbl, gif_alt in alt_options:
                 if lbl == selected_label:
@@ -129,7 +154,6 @@ else:
             selected_label = name
             selected_gif = gif_url_default
 
-        # título sempre mostra o nome base; a variação fica no select
         st.markdown(f"### {name}")
         st.caption(group)
 
@@ -144,8 +168,28 @@ else:
         weight_key = f"{day}_{idx}_peso"
         done_key = f"{day}_{idx}_feito"
 
+        # --- inicializa peso com último valor salvo em CSV, se existir ---
         if weight_key not in st.session_state:
-            st.session_state[weight_key] = 0.0
+            init_weight = 0.0
+            if df_history is not None:
+                if alt_options:
+                    # usa a última linha da variação selecionada
+                    df_filt = df_history[
+                        (df_history["dia"] == day) &
+                        (df_history["exercicio"] == selected_label)
+                    ]
+                else:
+                    df_filt = df_history[
+                        (df_history["dia"] == day) &
+                        (df_history["exercicio"] == name)
+                    ]
+
+                if not df_filt.empty:
+                    df_filt = df_filt.sort_values("timestamp")
+                    init_weight = float(df_filt.iloc[-1]["peso_kg"])
+
+            st.session_state[weight_key] = init_weight
+
         if done_key not in st.session_state:
             st.session_state[done_key] = False
 
@@ -179,6 +223,7 @@ else:
             for idx, (group, name, reps, gif_url_default) in enumerate(exercises):
                 alt_key = f"{day}_{idx}_alt"
                 alt_options = ALT_EXERCISES.get(name, None)
+
                 if alt_options:
                     log_name = st.session_state.get(alt_key, name)
                 else:
@@ -188,7 +233,7 @@ else:
                     "timestamp": datetime.now().isoformat(timespec="seconds"),
                     "dia": day,
                     "grupo": group,
-                    "exercicio": log_name,  # salva a variação escolhida
+                    "exercicio": log_name,
                     "series_reps": reps,
                     "peso_kg": st.session_state.get(f"{day}_{idx}_peso", 0.0),
                     "feito": bool(st.session_state.get(f"{day}_{idx}_feito", False)),
@@ -196,16 +241,20 @@ else:
 
             df_new = pd.DataFrame(rows)
             if os.path.exists(LOG_FILE):
-                df_old = pd.read_csv(LOG_FILE)
-                df_all = pd.concat([df_old, df_new], ignore_index=True)
+                try:
+                    df_old = pd.read_csv(LOG_FILE)
+                    df_all = pd.concat([df_old, df_new], ignore_index=True)
+                except Exception:
+                    df_all = df_new
             else:
                 df_all = df_new
+
             df_all.to_csv(LOG_FILE, index=False, encoding="utf-8-sig")
-            st.success("Treino salvo!")
+            st.success("Treino salvo! (peso será usado como base na próxima vez)")
 
     with c2:
         if st.button("🧹 Limpar"):
             for idx, _ in enumerate(exercises):
                 st.session_state[f"{day}_{idx}_peso"] = 0.0
                 st.session_state[f"{day}_{idx}_feito"] = False
-            st.info("Campos zerados para este dia.")
+            st.info("Campos zerados para este dia (histórico continua salvo no CSV).")
