@@ -100,22 +100,22 @@ else:
         weight_key = f"{day}_{idx}_peso"
         done_key = f"{day}_{idx}_feito"
 
+        # inicializa estado apenas se não existir
         if weight_key not in st.session_state:
             st.session_state[weight_key] = 0.0
-
         if done_key not in st.session_state:
             st.session_state[done_key] = False
 
         with cols[1]:
             st.write(f"● Séries x Reps: **{reps}**")
-            st.session_state[weight_key] = st.number_input(
+            st.number_input(
                 "Peso (kg)",
                 min_value=0.0,
-                value=float(st.session_state[weight_key]),
-                key=weight_key,
+                key=weight_key,  # o widget cuida do session_state
             )
-            st.session_state[done_key] = st.checkbox(
-                "Feito?", value=st.session_state[done_key], key=done_key
+            st.checkbox(
+                "Feito?",
+                key=done_key,
             )
 
         st.markdown("---")
@@ -138,7 +138,7 @@ else:
             df_new = pd.DataFrame(rows)
             if os.path.exists(LOG_FILE):
                 df_old = pd.read_csv(LOG_FILE)
-                df_all = pd.concat([df_old, df_new])
+                df_all = pd.concat([df_old, df_new], ignore_index=True)
             else:
                 df_all = df_new
             df_all.to_csv(LOG_FILE, index=False, encoding="utf-8-sig")
@@ -149,4 +149,4 @@ else:
             for idx, _ in enumerate(exercises):
                 st.session_state[f"{day}_{idx}_peso"] = 0.0
                 st.session_state[f"{day}_{idx}_feito"] = False
-            st.info("Limpo!")
+            st.info("Campos zerados para este dia.")
