@@ -10,7 +10,11 @@ GIFS = {
     "hip_thrust": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Hip-Thrust.gif",
     "abdutora": "https://fitnessprogramer.com/wp-content/uploads/2021/02/HiP-ABDUCTION-MACHINE.gif",
 
-    "lat_pulldown": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Cable-Straight-Arm-Pulldown.gif",  # atualizado ✔
+    # puxada alta aberta (barra no peito)
+    "lat_pulldown_open": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lat-Pulldown.gif",
+
+    # pulldown com braço estendido
+    "straight_pulldown": "https://fitnessprogramer.com/wp-content/uploads/2021/05/Cable-Straight-Arm-Pulldown.gif",
 
     "seated_row": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Seated-Cable-Row.gif",
     "leg_press": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Leg-Press.gif",
@@ -23,11 +27,17 @@ GIFS = {
     "leg_raise": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Leg-Raise.gif",
     "cable_kickback": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Hip-Extension.gif",
 
+    # flexoras (dois tipos)
     "leg_curl_lying": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Leg-Curl.gif",
     "leg_curl_seated": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Seated-Leg-Curl.gif",
 
+    # rosca alternada - link que você mandou
     "alt_db_curl": "https://fitnessprogramer.com/wp-content/uploads/2022/06/Seated-dumbbell-alternating-curl.gif",
+
+    # panturrilha sentada - link que você mandou
     "seated_calf": "https://fitnessprogramer.com/wp-content/uploads/2021/06/Lever-Seated-Calf-Raise.gif",
+
+    # outros
     "barbell_curl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Curl.gif",
     "leg_extension": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Extension.gif",
     "triceps_bar": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Triceps-Pushdown.gif",
@@ -48,8 +58,8 @@ WORKOUTS = {
         ("Glúteo e Posterior", "Mesa flexora", "4x12", GIFS["leg_curl_lying"]),
     ],
     "Terça": [
-        ("Costas / Bíceps / ABS / Panturrilha", "Puxada alta aberta", "3x12", GIFS["lat_pulldown"]),
-        ("Costas / Bíceps / ABS / Panturrilha", "Pulldown", "3x12", GIFS["lat_pulldown"]),
+        ("Costas / Bíceps / ABS / Panturrilha", "Puxada alta aberta", "3x12", GIFS["lat_pulldown_open"]),
+        ("Costas / Bíceps / ABS / Panturrilha", "Pulldown", "3x12", GIFS["straight_pulldown"]),
         ("Costas / Bíceps / ABS / Panturrilha", "Remada baixa", "4x12", GIFS["seated_row"]),
         ("Costas / Bíceps / ABS / Panturrilha", "Rosca direta com barra", "3x12", GIFS["barbell_curl"]),
         ("Costas / Bíceps / ABS / Panturrilha", "Rosca alternada com halteres", "3x12", GIFS["alt_db_curl"]),
@@ -106,7 +116,7 @@ else:
     df_history = None
 
 st.sidebar.title("Planner de Treinos")
-day = st.sidebar.selectbox("Selecione o dia", ["Selecione..."] + list(WORKOUTS.keys()))
+day = st.sidebar.selectbox("Selecione o dia", ["Selecione..." ] + list(WORKOUTS.keys()))
 
 st.title("Planner de Treinos com GIFs")
 
