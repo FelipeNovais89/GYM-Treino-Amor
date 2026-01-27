@@ -120,6 +120,8 @@ else:
     exercises = WORKOUTS[day]
     st.subheader(f"Treino de {day}")
 
+    done_flags = []  # vamos guardar os "Feito?" desse dia
+
     for idx, (group, name, reps, gif_url_default) in enumerate(exercises):
         alt_key = f"{day}_{idx}_alt"
         alt_options = ALT_EXERCISES.get(name, None)
@@ -173,7 +175,6 @@ else:
             init_weight = 0.0
             if df_history is not None:
                 if alt_options:
-                    # usa a última linha da variação selecionada
                     df_filt = df_history[
                         (df_history["dia"] == day) &
                         (df_history["exercicio"] == selected_label)
@@ -213,7 +214,21 @@ else:
                 key=done_key,
             )
 
+        done_flags.append(st.session_state[done_key])
         st.markdown("---")
+
+    # ---------- Checa se todos os exercícios do dia foram marcados ----------
+    if done_flags:
+        celebrate_key = f"{day}_celebrated"
+        all_done = all(done_flags)
+
+        if all_done and not st.session_state.get(celebrate_key, False):
+            st.balloons()
+            st.success("🎉 Parabéns, amor ❤️  \nMais um dia de treino feito!")
+            st.session_state[celebrate_key] = True
+        elif not all_done:
+            # se desmarcar algum, libera pra comemorar de novo
+            st.session_state[celebrate_key] = False
 
     c1, c2 = st.columns(2)
 
