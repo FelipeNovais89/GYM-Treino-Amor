@@ -5,7 +5,7 @@ import os
 
 st.set_page_config(page_title="Planner de Treinos", layout="wide")
 
-# ---------- GIFs ----------
+# ---------- GIFs (FitnessProgramer) ----------
 GIFS = {
     "hip_thrust": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Hip-Thrust.gif",
     "abdutora": "https://fitnessprogramer.com/wp-content/uploads/2021/02/HiP-ABDUCTION-MACHINE.gif",
@@ -20,6 +20,16 @@ GIFS = {
     "plank": "https://fitnessprogramer.com/wp-content/uploads/2021/02/plank.gif",
     "leg_raise": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Leg-Raise.gif",
     "cable_kickback": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Hip-Extension.gif",
+
+    # NOVOS GIFS QUE FALTAVAM
+    "leg_curl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Seated-Leg-Curl.gif",
+    "barbell_curl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Curl.gif",
+    "alt_db_curl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Alternating-Biceps-Curl.gif",
+    "seated_calf": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Seated-Calf-Raise.gif",
+    "leg_extension": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Extension.gif",
+    "triceps_bar": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Triceps-Pushdown.gif",
+    "triceps_rope": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Triceps-Pushdown.gif",
+    "standing_calf": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Calf-Raise.gif",
 }
 
 # ---------- Treino por dia ----------
@@ -31,20 +41,20 @@ WORKOUTS = {
         ("Glúteo e Posterior", "Búlgaro", "3x12", GIFS["bulgaro"]),
         ("Glúteo e Posterior", "Agachamento livre", "3x12", GIFS["squat"]),
         ("Glúteo e Posterior", "Stiff unilateral", "4x12", GIFS["stiff"]),
-        ("Glúteo e Posterior", "Mesa flexora", "4x12", ""),
+        ("Glúteo e Posterior", "Mesa flexora", "4x12", GIFS["leg_curl"]),
     ],
     "Terça": [
         ("Costas / Bíceps / ABS / Panturrilha", "Puxada alta aberta", "3x12", GIFS["lat_pulldown"]),
         ("Costas / Bíceps / ABS / Panturrilha", "Pulldown", "3x12", GIFS["lat_pulldown"]),
         ("Costas / Bíceps / ABS / Panturrilha", "Remada baixa", "4x12", GIFS["seated_row"]),
-        ("Costas / Bíceps / ABS / Panturrilha", "Rosca direta com barra", "3x12", ""),
-        ("Costas / Bíceps / ABS / Panturrilha", "Rosca alternada com halteres", "3x12", ""),
+        ("Costas / Bíceps / ABS / Panturrilha", "Rosca direta com barra", "3x12", GIFS["barbell_curl"]),
+        ("Costas / Bíceps / ABS / Panturrilha", "Rosca alternada com halteres", "3x12", GIFS["alt_db_curl"]),
         ("Costas / Bíceps / ABS / Panturrilha", "Prancha", "3x30–45s", GIFS["plank"]),
         ("Costas / Bíceps / ABS / Panturrilha", "Abdominal infra (elevação de pernas)", "4x20", GIFS["leg_raise"]),
-        ("Costas / Bíceps / ABS / Panturrilha", "Elevação de panturrilha sentado", "3x15–20", ""),
+        ("Costas / Bíceps / ABS / Panturrilha", "Elevação de panturrilha sentado", "3x15–20", GIFS["seated_calf"]),
     ],
     "Quarta": [
-        ("Quadríceps e Glúteo", "Cadeira extensora", "5x15", ""),
+        ("Quadríceps e Glúteo", "Cadeira extensora", "5x15", GIFS["leg_extension"]),
         ("Quadríceps e Glúteo", "Agachamento livre", "4x12", GIFS["squat"]),
         ("Quadríceps e Glúteo", "Búlgaro", "3x12", GIFS["bulgaro"]),
         ("Quadríceps e Glúteo", "Afundo", "3x12", GIFS["bulgaro"]),
@@ -56,11 +66,11 @@ WORKOUTS = {
         ("Ombro / Tríceps / ABS / Panturrilha", "Desenvolvimento com halteres", "3x12", GIFS["shoulder_press"]),
         ("Ombro / Tríceps / ABS / Panturrilha", "Elevação lateral com halteres", "3x12", GIFS["lateral_raise"]),
         ("Ombro / Tríceps / ABS / Panturrilha", "Elevação frontal com halteres", "3x12", GIFS["lateral_raise"]),
-        ("Ombro / Tríceps / ABS / Panturrilha", "Tríceps na polia (corda)", "3x12", ""),
-        ("Ombro / Tríceps / ABS / Panturrilha", "Tríceps na polia (barra)", "3x12", ""),
+        ("Ombro / Tríceps / ABS / Panturrilha", "Tríceps na polia (corda)", "3x12", GIFS["triceps_rope"]),
+        ("Ombro / Tríceps / ABS / Panturrilha", "Tríceps na polia (barra)", "3x12", GIFS["triceps_bar"]),
         ("Ombro / Tríceps / ABS / Panturrilha", "Prancha", "3x30–45s", GIFS["plank"]),
         ("Ombro / Tríceps / ABS / Panturrilha", "Abdominal infra (elevação de pernas)", "4x20", GIFS["leg_raise"]),
-        ("Ombro / Tríceps / ABS / Panturrilha", "Elevação de panturrilha em pé", "3x15–20", ""),
+        ("Ombro / Tríceps / ABS / Panturrilha", "Elevação de panturrilha em pé", "3x15–20", GIFS["standing_calf"]),
     ],
     "Sexta": [
         ("Glúteo", "Elevação pélvica (Hip Thrust)", "4x12", GIFS["hip_thrust"]),
@@ -111,7 +121,7 @@ else:
             st.number_input(
                 "Peso (kg)",
                 min_value=0.0,
-                key=weight_key,  # o widget cuida do session_state
+                key=weight_key,
             )
             st.checkbox(
                 "Feito?",
