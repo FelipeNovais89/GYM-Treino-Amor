@@ -31,15 +31,15 @@ GIFS = {
     "leg_curl_lying": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Leg-Curl.gif",
     "leg_curl_seated": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Seated-Leg-Curl.gif",
 
-    # rosca alternada - link que você mandou
+    # rosca alternada
     "alt_db_curl": "https://fitnessprogramer.com/wp-content/uploads/2022/06/Seated-dumbbell-alternating-curl.gif",
 
-    # panturrilha sentada - link que você mandou
+    # panturrilha sentada
     "seated_calf": "https://fitnessprogramer.com/wp-content/uploads/2021/06/Lever-Seated-Calf-Raise.gif",
 
     # outros
     "barbell_curl": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Curl.gif",
-    "leg_extension": "https://fitnessprogramer.com/wp-content/uploads/2021/02/LEG-EXTENSION.gif",  # atualizado
+    "leg_extension": "https://fitnessprogramer.com/wp-content/uploads/2021/02/LEG-EXTENSION.gif",
     "triceps_bar": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Triceps-Pushdown.gif",
     "triceps_rope": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Triceps-Pushdown.gif",
     "standing_calf": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Calf-Raise.gif",
@@ -49,6 +49,11 @@ GIFS = {
     "split_squat_db": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQMfPUcNXe8VtsptiC6de4ICwID4x17hXMcyQ&s",
     "split_squat_bb": "https://fitnessprogramer.com/wp-content/uploads/2022/04/Barbell-Split-Squat.gif",
     "split_squat_band": "https://fitnessprogramer.com/wp-content/uploads/2022/10/Banded-Split-Squat.gif",
+
+    # Elevação frontal com halteres e variações
+    "front_raise_db": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Front-Raise.gif",
+    "front_raise_db_two": "https://fitnessprogramer.com/wp-content/uploads/2021/08/Two-Arm-Dumbbell-Front-Raise.gif",
+    "front_raise_cable_two": "https://fitnessprogramer.com/wp-content/uploads/2021/08/Two-Arm-Cable-Front-Raise.gif",
 }
 
 # ---------- Treino por dia ----------
@@ -84,7 +89,7 @@ WORKOUTS = {
     "Quinta": [
         ("Ombro / Tríceps / ABS / Panturrilha", "Desenvolvimento com halteres", "3x12", GIFS["shoulder_press"]),
         ("Ombro / Tríceps / ABS / Panturrilha", "Elevação lateral com halteres", "3x12", GIFS["lateral_raise"]),
-        ("Ombro / Tríceps / ABS / Panturrilha", "Elevação frontal com halteres", "3x12", GIFS["lateral_raise"]),
+        ("Ombro / Tríceps / ABS / Panturrilha", "Elevação frontal c/ halter (Dumbbell Front Raise)", "3x12", GIFS["front_raise_db"]),
         ("Ombro / Tríceps / ABS / Panturrilha", "Tríceps na polia (corda)", "3x12", GIFS["triceps_rope"]),
         ("Ombro / Tríceps / ABS / Panturrilha", "Tríceps na polia (barra)", "3x12", GIFS["triceps_bar"]),
         ("Ombro / Tríceps / ABS / Panturrilha", "Prancha", "3x30–45s", GIFS["plank"]),
@@ -101,7 +106,7 @@ WORKOUTS = {
     ],
 }
 
-# ---------- Variações (Mesa flexora e Afundo) ----------
+# ---------- Variações (Mesa flexora, Afundo, Elevação frontal) ----------
 ALT_EXERCISES = {
     "Mesa flexora": [
         ("Mesa flexora", GIFS["leg_curl_lying"]),
@@ -112,6 +117,11 @@ ALT_EXERCISES = {
         ("Afundo com Halteres (Dumbbell Split Squat)", GIFS["split_squat_db"]),
         ("Afundo com Barra (Barbell Split Squat)", GIFS["split_squat_bb"]),
         ("Afundo com Elástico (Banded Split Squat)", GIFS["split_squat_band"]),
+    ],
+    "Elevação frontal c/ halter (Dumbbell Front Raise)": [
+        ("Elevação frontal c/ halter (Dumbbell Front Raise)", GIFS["front_raise_db"]),
+        ("Elevação frontal c/ halteres (Two Arm Dumbbell Front Raise)", GIFS["front_raise_db_two"]),
+        ("Elevação frontal na polia (Arm Cable Front Raise)", GIFS["front_raise_cable_two"]),
     ],
 }
 
@@ -216,8 +226,6 @@ else:
 
             if alt_options:
                 st.selectbox(
-               
-
                     "Variação",
                     options=labels,
                     key=alt_key,
