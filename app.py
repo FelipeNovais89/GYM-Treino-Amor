@@ -27,7 +27,7 @@ GIFS = {
     "leg_raise": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lying-Leg-Raise.gif",
     "cable_kickback": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Hip-Extension.gif",
 
-    # flexoras (dois tipos)
+    # flexoras
     "leg_curl_lying": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Leg-Curl.gif",
     "leg_curl_seated": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Seated-Leg-Curl.gif",
 
@@ -43,6 +43,12 @@ GIFS = {
     "triceps_bar": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Cable-Triceps-Pushdown.gif",
     "triceps_rope": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Rope-Triceps-Pushdown.gif",
     "standing_calf": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Standing-Calf-Raise.gif",
+
+    # Afundo / Split Squat e variações
+    "split_squat": "https://fitnessprogramer.com/wp-content/uploads/2022/12/ATG-Split-Squat.gif",
+    "split_squat_db": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQMfPUcNXe8VtsptiC6de4ICwID4x17hXMcyQ&s",
+    "split_squat_bb": "https://fitnessprogramer.com/wp-content/uploads/2022/04/Barbell-Split-Squat.gif",
+    "split_squat_band": "https://fitnessprogramer.com/wp-content/uploads/2022/10/Banded-Split-Squat.gif",
 }
 
 # ---------- Treino por dia ----------
@@ -54,7 +60,6 @@ WORKOUTS = {
         ("Glúteo e Posterior", "Búlgaro", "3x12", GIFS["bulgaro"]),
         ("Glúteo e Posterior", "Agachamento livre", "3x12", GIFS["squat"]),
         ("Glúteo e Posterior", "Stiff unilateral", "4x12", GIFS["stiff"]),
-        # Mesa flexora com variações (mesa/cadeira)
         ("Glúteo e Posterior", "Mesa flexora", "4x12", GIFS["leg_curl_lying"]),
     ],
     "Terça": [
@@ -71,7 +76,7 @@ WORKOUTS = {
         ("Quadríceps e Glúteo", "Cadeira extensora", "5x15", GIFS["leg_extension"]),
         ("Quadríceps e Glúteo", "Agachamento livre", "4x12", GIFS["squat"]),
         ("Quadríceps e Glúteo", "Búlgaro", "3x12", GIFS["bulgaro"]),
-        ("Quadríceps e Glúteo", "Afundo", "3x12", GIFS["bulgaro"]),
+        ("Quadríceps e Glúteo", "Afundo (Split Squat)", "3x12", GIFS["split_squat"]),
         ("Quadríceps e Glúteo", "Leg press", "3x12", GIFS["leg_press"]),
         ("Quadríceps e Glúteo", "Cadeira abdutora", "4x12", GIFS["abdutora"]),
         ("Quadríceps e Glúteo", "Coice na polia", "3x12", GIFS["cable_kickback"]),
@@ -96,11 +101,17 @@ WORKOUTS = {
     ],
 }
 
-# ---------- Variações (por enquanto só flexora) ----------
+# ---------- Variações (Mesa flexora e Afundo) ----------
 ALT_EXERCISES = {
     "Mesa flexora": [
         ("Mesa flexora", GIFS["leg_curl_lying"]),
         ("Cadeira flexora", GIFS["leg_curl_seated"]),
+    ],
+    "Afundo (Split Squat)": [
+        ("Afundo (Split Squat)", GIFS["split_squat"]),
+        ("Afundo com Halteres (Dumbbell Split Squat)", GIFS["split_squat_db"]),
+        ("Afundo com Barra (Barbell Split Squat)", GIFS["split_squat_bb"]),
+        ("Afundo com Elástico (Banded Split Squat)", GIFS["split_squat_band"]),
     ],
 }
 
@@ -116,7 +127,7 @@ else:
     df_history = None
 
 st.sidebar.title("Planner de Treinos")
-day = st.sidebar.selectbox("Selecione o dia", ["Selecione..." ] + list(WORKOUTS.keys()))
+day = st.sidebar.selectbox("Selecione o dia", ["Selecione..."] + list(WORKOUTS.keys()))
 
 st.title("Planner de Treinos com GIFs")
 
