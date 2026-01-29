@@ -106,7 +106,6 @@ WORKOUTS = {
 
         ("Ombro / Tríceps / ABS / Panturrilha", "Prancha", "3x30–45s", GIFS["plank"]),
         ("Ombro / Tríceps / ABS / Panturrilha", "Abdominal infra (elevação de pernas)", "4x20", GIFS["leg_raise"]),
-        ("Ombro / Tríceps / ABS / Panturrilha", "Elevação de panturrilha em pé", "3x15–20", GIFS["standing_calf"]),
     ],
     "Sexta": [
         ("Glúteo", "Elevação pélvica (Hip Thrust)", "4x12", GIFS["hip_thrust"]),
