@@ -10,6 +10,10 @@ GIFS = {
     "hip_thrust": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Hip-Thrust.gif",
     "abdutora": "https://fitnessprogramer.com/wp-content/uploads/2021/02/HiP-ABDUCTION-MACHINE.gif",
 
+    "pec_deck" = "https://fitnessprogramer.com/wp-content/uploads/2021/02/Pec-Deck-Fly.gif"
+    "triceps_pushdown" = "https://fitnessprogramer.com/wp-content/uploads/2021/02/Pushdown.gif"
+    "triceps_barbell_lying" = "https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Triceps-Extension.gif"
+    
     # puxada alta aberta (barra no peito)
     "lat_pulldown_open": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Lat-Pulldown.gif",
 
@@ -87,15 +91,19 @@ WORKOUTS = {
         ("Quadríceps e Glúteo", "Coice na polia", "3x12", GIFS["cable_kickback"]),
     ],
     "Quinta": [
-        ("Ombro / Tríceps / ABS / Panturrilha", "Desenvolvimento com halteres", "3x12", GIFS["shoulder_press"]),
-        ("Ombro / Tríceps / ABS / Panturrilha", "Elevação lateral com halteres", "3x12", GIFS["lateral_raise"]),
-        ("Ombro / Tríceps / ABS / Panturrilha", "Elevação frontal c/ halter (Dumbbell Front Raise)", "3x12", GIFS["front_raise_db"]),
-        ("Ombro / Tríceps / ABS / Panturrilha", "Tríceps na polia (corda)", "3x12", GIFS["triceps_rope"]),
-        ("Ombro / Tríceps / ABS / Panturrilha", "Tríceps na polia (barra)", "3x12", GIFS["triceps_bar"]),
-        ("Ombro / Tríceps / ABS / Panturrilha", "Prancha", "3x30–45s", GIFS["plank"]),
-        ("Ombro / Tríceps / ABS / Panturrilha", "Abdominal infra (elevação de pernas)", "4x20", GIFS["leg_raise"]),
-        ("Ombro / Tríceps / ABS / Panturrilha", "Elevação de panturrilha em pé", "3x15–20", GIFS["standing_calf"]),
-    ],
+    ("Peito / Ombro / Tríceps / ABS / Panturrilha", "Crucifixo Máquina (Pec Deck Fly)", "3x12", GIFS["pec_deck"]),
+    ("Ombro / Tríceps / ABS / Panturrilha", "Desenvolvimento com halteres", "3x12", GIFS["shoulder_press"]),
+    ("Ombro / Tríceps / ABS / Panturrilha", "Elevação lateral com halteres", "3x12", GIFS["lateral_raise"]),
+
+    # Elevação frontal fica fora por enquanto (stand by no código)
+
+    ("Ombro / Tríceps / ABS / Panturrilha", "Tríceps na Polia (Triceps Pushdown)", "3x12", GIFS["triceps_pushdown"]),
+    ("Ombro / Tríceps / ABS / Panturrilha", "Tríceps Testa com Barra (Lying Barbell Triceps Extension)", "3x12", GIFS["triceps_barbell_lying"]),
+
+    ("Ombro / Tríceps / ABS / Panturrilha", "Prancha", "3x30–45s", GIFS["plank"]),
+    ("Ombro / Tríceps / ABS / Panturrilha", "Abdominal infra (elevação de pernas)", "4x20", GIFS["leg_raise"]),
+    ("Ombro / Tríceps / ABS / Panturrilha", "Elevação de panturrilha em pé", "3x15–20", GIFS["standing_calf"]),
+],
     "Sexta": [
         ("Glúteo", "Elevação pélvica (Hip Thrust)", "4x12", GIFS["hip_thrust"]),
         ("Glúteo", "Cadeira abdutora", "4x15", GIFS["abdutora"]),
