@@ -108,13 +108,18 @@ WORKOUTS = {
         ("Ombro / Tríceps / ABS / Panturrilha", "Abdominal infra (elevação de pernas)", "4x20", GIFS["leg_raise"]),
     ],
     "Sexta": [
-    ("Glúteo", "Elevação pélvica (Hip Thrust)", "4x12", GIFS["hip_thrust"]),
-    ("Glúteo", "Cadeira abdutora", "4x15", GIFS["abdutora"]),
-    ("Glúteo", "Coice na polia", "3x12", GIFS["cable_kickback"]),
-    ("Glúteo", "Agachamento sumô", "4x12", GIFS["squat"]),
-    ("Glúteo", "Búlgaro", "3x12", GIFS["bulgaro"]),
-    ("Glúteo", "Stiff", "4x12", GIFS["stiff"]),
-    ],
+    ("Pernas", "Agachamento Livre (Barbell Squat)", "4x20/15/12/10", GIFS["squat"]),
+
+    ("Pernas", "Afundo no Smith (Split Squat)", "4x12 controlado", GIFS["split_squat"]),
+
+    ("Pernas", "Leg Press 45°", "4x16 super slow", GIFS["leg_press"]),
+
+    ("Quadríceps", "Cadeira Extensora (Leg Extension)", "4x16 pico de contração", GIFS["leg_extension"]),
+
+    ("Glúteo", "Cadeira Abdutora (Hip Abduction)", "3x16", GIFS["abdutora"]),
+
+    ("Panturrilha", "Panturrilha Sentado (substitui Smith)", "3x20", GIFS["calf_seated"]),
+],
 }
 
 # ---------- Variações ----------
