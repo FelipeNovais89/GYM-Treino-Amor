@@ -24,6 +24,7 @@ GIFS = {
     "leg_curl_lying": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Leg-Curl.gif",
     "leg_curl_seated": "https://fitnessprogramer.com/wp-content/uploads/2015/11/Seated-Leg-Curl.gif",
     "calf_seated": "https://fitnessprogramer.com/wp-content/uploads/2021/06/Lever-Seated-Calf-Raise.gif",
+    "Hip _Adduction_Machine": "https://fitnessprogramer.com/wp-content/uploads/2021/02/HIP-ADDUCTION-MACHINE.gif",
     # ombro
     "lateral_raise": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lateral-Raise.gif",
     "shoulder_press": "https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Shoulder-Press.gif",
@@ -116,7 +117,7 @@ WORKOUTS = {
 
     ("Quadríceps", "Cadeira Extensora (Leg Extension)", "4x16 pico de contração", GIFS["leg_extension"]),
 
-    ("Glúteo", "Cadeira Abdutora (Hip Abduction)", "3x16", GIFS["abdutora"]),
+    ("Glúteo", "Cadeira Adutora (Hip Adduction)", "3x16", GIFS["Hip _Adduction_Machine"]),
 
     ("Panturrilha", "Panturrilha Sentado (substitui Smith)", "3x20", GIFS["calf_seated"]),
 ],
