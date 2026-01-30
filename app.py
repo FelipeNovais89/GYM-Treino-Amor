@@ -108,12 +108,12 @@ WORKOUTS = {
         ("Ombro / Tríceps / ABS / Panturrilha", "Abdominal infra (elevação de pernas)", "4x20", GIFS["leg_raise"]),
     ],
     "Sexta": [
-        ("Glúteo", "Elevação pélvica (Hip Thrust)", "4x12", GIFS["hip_thrust"]),
-        ("Glúteo", "Cadeira abdutora", "4x15", GIFS["abdutora"]),
-        ("Glúteo", "Coice na polia", "3x12", GIFS["cable_kickback"]),
-        ("Glúteo", "Agachamento sumô", "4x12", GIFS["squat"]),
-        ("Glúteo", "Búlgaro", "3x12", GIFS["bulgaro"]),
-        ("Glúteo", "Stiff", "4x12", GIFS["stiff"]),
+    ("Glúteo", "Elevação pélvica (Hip Thrust)", "4x12", GIFS["hip_thrust"]),
+    ("Glúteo", "Cadeira abdutora", "4x15", GIFS["abdutora"]),
+    ("Glúteo", "Coice na polia", "3x12", GIFS["cable_kickback"]),
+    ("Glúteo", "Agachamento sumô", "4x12", GIFS["squat"]),
+    ("Glúteo", "Búlgaro", "3x12", GIFS["bulgaro"]),
+    ("Glúteo", "Stiff", "4x12", GIFS["stiff"]),
     ],
 }
 
