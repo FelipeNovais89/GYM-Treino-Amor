@@ -1,1 +1,1 @@
-timestamp,dia,grupo,exercicio,series_reps,peso_kg,feito
+timestamp,user,dia,grupo,exercicio,series_reps_planejado,series_reps_feito,peso_kg,feito
