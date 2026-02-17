@@ -133,7 +133,6 @@ def load_history_from_github() -> pd.DataFrame:
 def append_history_to_github(df_new: pd.DataFrame) -> bool:
     df_old = load_history_from_github()
 
-    # normaliza colunas
     for col in CSV_COLUMNS:
         if col not in df_new.columns:
             df_new[col] = "" if col != "peso_kg" else 0.0
@@ -218,56 +217,61 @@ GIFS = {
 
 
 # ============================================================
-# 3) Treinos (por enquanto no código)
-#    -> depois você pode migrar para CSV no GitHub
+# 3) Treinos (CSV no GitHub) — "duas abas" por user
 # ============================================================
-WORKOUTS = {
-    "Segunda": [
-        ("Glúteo e Posterior", "Cadeira abdutora", "4x15", GIFS["hip_abduction"]),
-        ("Glúteo e Posterior", "Elevação pélvica (Hip Thrust)", "4x12", GIFS["hip_thrust"]),
-        ("Glúteo e Posterior", "Coice e abdução na polia", "3x10", GIFS["cable_kickback"]),
-        ("Glúteo e Posterior", "Búlgaro", "3x12", GIFS["bulgaro"]),
-        ("Glúteo e Posterior", "Agachamento livre", "3x12", GIFS["squat"]),
-        ("Glúteo e Posterior", "Stiff unilateral", "4x12", GIFS["stiff"]),
-        ("Glúteo e Posterior", "Mesa flexora", "4x12", GIFS["leg_curl_lying"]),
-    ],
-    "Terça": [
-        ("Costas / Bíceps / ABS / Panturrilha", "Puxada alta aberta", "3x12", GIFS["lat_pulldown_open"]),
-        ("Costas / Bíceps / ABS / Panturrilha", "Pulldown", "3x12", GIFS["straight_pulldown"]),
-        ("Costas / Bíceps / ABS / Panturrilha", "Remada baixa", "4x12", GIFS["seated_row"]),
-        ("Costas / Bíceps / ABS / Panturrilha", "Rosca direta com barra", "3x12", GIFS["barbell_curl"]),
-        ("Costas / Bíceps / ABS / Panturrilha", "Rosca alternada com halteres", "3x12", GIFS["alt_db_curl"]),
-        ("Costas / Bíceps / ABS / Panturrilha", "Prancha", "3x30–45s", GIFS["plank"]),
-        ("Costas / Bíceps / ABS / Panturrilha", "Abdominal infra (elevação de pernas)", "4x20", GIFS["leg_raise"]),
-        ("Costas / Bíceps / ABS / Panturrilha", "Elevação de panturrilha sentado", "3x15–20", GIFS["calf_seated"]),
-    ],
-    "Quarta": [
-        ("Quadríceps e Glúteo", "Cadeira extensora", "5x15", GIFS["leg_extension"]),
-        ("Quadríceps e Glúteo", "Agachamento livre", "4x12", GIFS["squat"]),
-        ("Quadríceps e Glúteo", "Búlgaro", "3x12", GIFS["bulgaro"]),
-        ("Quadríceps e Glúteo", "Afundo (Split Squat)", "3x12", GIFS["split_squat"]),
-        ("Quadríceps e Glúteo", "Leg press", "3x12", GIFS["leg_press"]),
-        ("Quadríceps e Glúteo", "Cadeira abdutora", "4x12", GIFS["hip_abduction"]),
-        ("Quadríceps e Glúteo", "Coice na polia", "3x12", GIFS["cable_kickback"]),
-    ],
-    "Quinta": [
-        ("Peito / Ombro / Tríceps / ABS", "Crucifixo Máquina (Pec Deck Fly)", "3x12", GIFS["pec_deck"]),
-        ("Ombro / Tríceps / ABS", "Desenvolvimento com halteres", "3x12", GIFS["shoulder_press"]),
-        ("Ombro / Tríceps / ABS", "Elevação lateral com halteres", "3x12", GIFS["lateral_raise"]),
-        ("Ombro / Tríceps / ABS", "Tríceps na Polia (Triceps Pushdown)", "3x12", GIFS["triceps_pushdown"]),
-        ("Ombro / Tríceps / ABS", "Tríceps Testa com Barra (Lying Barbell Triceps Extension)", "3x12", GIFS["triceps_barbell_lying"]),
-        ("Ombro / Tríceps / ABS", "Prancha", "3x30–45s", GIFS["plank"]),
-        ("Ombro / Tríceps / ABS", "Abdominal infra (elevação de pernas)", "4x20", GIFS["leg_raise"]),
-    ],
-    "Sexta": [
-        ("Pernas", "Agachamento Livre (Barbell Squat)", "4x20/15/12/10", GIFS["squat"]),
-        ("Pernas", "Afundo no Smith (Split Squat)", "4x12 controlado", GIFS["split_squat"]),
-        ("Pernas", "Leg Press 45°", "4x16 super slow", GIFS["leg_press"]),
-        ("Quadríceps", "Cadeira Extensora (Leg Extension)", "4x16 pico de contração", GIFS["leg_extension"]),
-        ("Glúteo", "Cadeira Adutora (Hip Adduction)", "3x16", GIFS["hip_adduction"]),
-        ("Panturrilha", "Elevação de panturrilha sentado", "3x20", GIFS["calf_seated"]),
-    ],
-}
+TREINOS_CSV_PATH = "Data/treinos.csv"
+TREINOS_COLUMNS = ["user", "dia", "ordem", "grupo", "exercicio", "series_reps", "gif_key", "alt_group"]
+
+
+@st.cache_data(ttl=60)
+def load_treinos_from_github() -> pd.DataFrame:
+    txt, _ = gh_read_file(TREINOS_CSV_PATH)
+    if not (txt or "").strip():
+        return pd.DataFrame(columns=TREINOS_COLUMNS)
+
+    try:
+        df = pd.read_csv(io.StringIO(txt))
+    except Exception:
+        return pd.DataFrame(columns=TREINOS_COLUMNS)
+
+    df.columns = [str(c).strip() for c in df.columns]
+
+    for c in TREINOS_COLUMNS:
+        if c not in df.columns:
+            df[c] = ""
+
+    df["ordem"] = pd.to_numeric(df["ordem"], errors="coerce").fillna(9999).astype(int)
+    df = df[TREINOS_COLUMNS].fillna("")
+    return df
+
+
+def get_available_days_for_user(user: str) -> list[str]:
+    df = load_treinos_from_github()
+    dfu = df[df["user"].astype(str) == str(user)]
+    days = sorted(dfu["dia"].astype(str).unique().tolist())
+    return days
+
+
+def get_workouts_for_day(user: str, day: str):
+    """
+    Retorna lista no formato:
+      [(grupo, exercicio, series_reps, gif_url_default, alt_group), ...]
+    """
+    df = load_treinos_from_github()
+    dfu = df[df["user"].astype(str) == str(user)]
+    dfd = dfu[dfu["dia"].astype(str) == str(day)].sort_values("ordem")
+
+    out = []
+    for _, r in dfd.iterrows():
+        group = str(r["grupo"])
+        name = str(r["exercicio"])
+        reps = str(r["series_reps"])
+        gif_key = str(r["gif_key"]).strip()
+        alt_group = str(r["alt_group"]).strip()
+
+        gif_url = GIFS.get(gif_key, "")
+        out.append((group, name, reps, gif_url, alt_group))
+    return out
 
 
 # ============================================================
@@ -333,14 +337,18 @@ def screen_login():
     st.caption("Escolha o usuário (sem senha).")
 
     c1, c2 = st.columns(2)
+
+    # BOTÃO com nome "Teca..." -> user interno = "Amor 🤍"
     with c1:
         if st.button("Teca Ernesto 🤍 (Futura Novais)", use_container_width=True):
-            st.session_state.user = "Teca Ernesto 🤍 (Futura Novais)"
+            st.session_state.user = "Amor 🤍"
             st.session_state.day_selected = today_pt()
             goto("menu")
+
+    # BOTÃO com nome "Tico..." -> user interno = "Felipe 💪"
     with c2:
         if st.button("Tico Novais ❤️ (Enfezadinho do Oceano)", use_container_width=True):
-            st.session_state.user = "Tico Novais ❤️ (Enfezadinho do Oceano)"
+            st.session_state.user = "Felipe 💪"
             st.session_state.day_selected = today_pt()
             goto("menu")
 
@@ -394,8 +402,13 @@ def screen_treino():
 
     st.markdown("---")
 
-    # dia padrão = hoje (mas permite trocar)
-    available_days = list(WORKOUTS.keys())
+    # dias disponíveis do CSV (por usuário)
+    available_days = get_available_days_for_user(user)
+    if not available_days:
+        st.error("Nenhum treino encontrado no Data/treinos.csv para este usuário.")
+        st.info("Verifique se o CSV tem a coluna 'user' e valores 'Amor 🤍' / 'Felipe 💪'.")
+        return
+
     default_day = st.session_state.get("day_selected", today_pt())
     if default_day not in available_days:
         default_day = available_days[0]
@@ -404,13 +417,13 @@ def screen_treino():
     day = st.selectbox("Dia do treino", options=available_days, index=idx_default, key="day_picker")
     st.session_state.day_selected = day
 
-    exercises = WORKOUTS[day]
+    exercises = get_workouts_for_day(user, day)
     st.subheader(f"{day} — Exercícios")
 
     done_flags = []
 
-    for idx, (group, name, reps, gif_url_default) in enumerate(exercises):
-        alt_group = name if name in ALT_EXERCISES else None
+    for idx, (group, name, reps, gif_url_default, alt_group) in enumerate(exercises):
+        alt_group = (alt_group or "").strip()
         alt_options = ALT_EXERCISES.get(alt_group, None) if alt_group else None
 
         alt_key = f"{user}_{day}_{idx}_alt"
@@ -453,7 +466,6 @@ def screen_treino():
             st.write(f"● Séries x Reps: **{reps}**")
             if alt_options:
                 st.selectbox("Variação", options=[o[0] for o in alt_options], key=alt_key)
-                # atualiza selected_label depois do selectbox
                 selected_label = st.session_state.get(alt_key, selected_label)
 
             st.number_input("Peso (kg)", min_value=0.0, step=0.5, key=weight_key)
@@ -462,14 +474,14 @@ def screen_treino():
         done_flags.append(bool(st.session_state[done_key]))
         st.markdown("---")
 
-    # Comemoração (só para Amor ❤️)
+    # Comemoração
     if done_flags:
         celebrate_key = f"{user}_{day}_celebrated"
         all_done = all(done_flags)
         if all_done and not st.session_state.get(celebrate_key, False):
             st.balloons()
-            if user.startswith("Amor"):
-                st.success("🎉 Parabéns, amor ❤️\nMais um dia de treino feito!")
+            if user == "Amor 🤍":
+                st.success("🎉 Parabéns, amor 🤍\nMais um dia de treino feito!")
             else:
                 st.success("🎉 Treino completo! 💪")
             st.session_state[celebrate_key] = True
@@ -481,11 +493,11 @@ def screen_treino():
     with c1:
         if st.button("💾 Salvar treino", use_container_width=True):
             rows = []
-            for idx, (group, name, reps, gif_url_default) in enumerate(exercises):
-                alt_key = f"{user}_{day}_{idx}_alt"
-                alt_options = ALT_EXERCISES.get(name, None)
+            for idx, (group, name, reps, gif_url_default, alt_group) in enumerate(exercises):
+                alt_group = (alt_group or "").strip()
+                alt_options = ALT_EXERCISES.get(alt_group, None) if alt_group else None
 
-                log_name = st.session_state.get(alt_key, name) if alt_options else name
+                log_name = st.session_state.get(f"{user}_{day}_{idx}_alt", name) if alt_options else name
 
                 rows.append({
                     "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
@@ -557,7 +569,6 @@ def screen_graficos():
         st.info("Sem dados ainda. Salve alguns treinos para ver gráficos.")
         return
 
-    # filtros simples
     day_opts = ["(todos)"] + sorted(dfh["dia"].dropna().unique().tolist())
     dia_sel = st.selectbox("Filtrar por dia", options=day_opts)
 
@@ -570,11 +581,10 @@ def screen_graficos():
     if ex_sel != "(todos)":
         dfh = dfh[dfh["exercicio"] == ex_sel]
 
-    # prepara
     dfh["peso_kg"] = pd.to_numeric(dfh["peso_kg"], errors="coerce").fillna(0.0)
     dfh = dfh.sort_values("timestamp", ascending=True)
 
-    st.caption("Por enquanto, aqui mostramos uma tabela filtrada. Se quiser, eu coloco gráficos (linha do peso, volume, etc.).")
+    st.caption("Se quiser, eu coloco gráficos (linha do peso, volume total, recordes, etc.).")
     st.dataframe(dfh.tail(200), use_container_width=True, height=520)
 
 
@@ -588,8 +598,8 @@ def screen_editar_treino():
         goto("menu")
 
     st.info(
-        "Aqui a gente pode migrar os treinos para um CSV no GitHub (Data/treinos.csv), "
-        "e permitir editar pelo app sem mexer no código."
+        "Agora que os treinos estão no Data/treinos.csv, o próximo passo é criar uma tela "
+        "para editar e salvar o CSV direto pelo app (sem abrir o GitHub)."
     )
 
 
