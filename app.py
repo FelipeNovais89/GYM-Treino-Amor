@@ -334,12 +334,12 @@ def screen_login():
 
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("Amor ❤️", use_container_width=True):
+        if st.button("Teca Ernesto 🤍 (Futura Novais)", use_container_width=True):
             st.session_state.user = "Teca Ernesto 🤍 (Futura Novais)"
             st.session_state.day_selected = today_pt()
             goto("menu")
     with c2:
-        if st.button("Felipe 💪", use_container_width=True):
+        if st.button("Tico Novais ❤️ (Enfezadinho do Oceano)", use_container_width=True):
             st.session_state.user = "Tico Novais ❤️ (Enfezadinho do Oceano)"
             st.session_state.day_selected = today_pt()
             goto("menu")
