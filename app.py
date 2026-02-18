@@ -1,3 +1,4 @@
+# app.py — Planner de Treinos (GitHub CSV: treinos + exercicios + log)
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -6,14 +7,15 @@ import json
 import requests
 import io
 import time
-import re
 
 st.set_page_config(page_title="Planner de Treinos", layout="wide")
 
+# ============================================================
+# 0) Helpers de navegação + dia de hoje
+# ============================================================
+EDIT_DAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
 
-# ============================================================
-# 0) Helpers
-# ============================================================
+
 def today_pt() -> str:
     map_pt = {
         0: "Segunda",
@@ -32,17 +34,6 @@ def goto(screen: str):
     st.rerun()
 
 
-def _now_utc_z():
-    return datetime.utcnow().isoformat(timespec="seconds") + "Z"
-
-
-def _safe_id(s: str) -> str:
-    s = (s or "").strip().lower()
-    s = re.sub(r"[^\w]+", "_", s)
-    s = re.sub(r"_+", "_", s).strip("_")
-    return s or f"ex_{int(time.time())}"
-
-
 def init_state():
     if "screen" not in st.session_state:
         st.session_state.screen = "login"
@@ -51,9 +42,9 @@ def init_state():
     if "day_selected" not in st.session_state:
         st.session_state.day_selected = today_pt()
 
-    # edição
+    # edição (modais)
     if "edit_day" not in st.session_state:
-        st.session_state.edit_day = today_pt()
+        st.session_state.edit_day = today_pt() if today_pt() in EDIT_DAYS else "Segunda"
     if "open_day_modal" not in st.session_state:
         st.session_state.open_day_modal = False
     if "open_ex_modal" not in st.session_state:
@@ -63,13 +54,21 @@ def init_state():
     if "edit_row_id" not in st.session_state:
         st.session_state.edit_row_id = None
 
-    # cadastro de exercício
-    if "open_new_ex_modal" not in st.session_state:
-        st.session_state.open_new_ex_modal = False
+    # gerenciar exercícios (modal)
+    if "open_exercise_modal" not in st.session_state:
+        st.session_state.open_exercise_modal = False
+    if "ex_action" not in st.session_state:
+        st.session_state.ex_action = None
+    if "ex_edit_name" not in st.session_state:
+        st.session_state.ex_edit_name = ""
+
+
+def _now_utc_z():
+    return datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
 
 # ============================================================
-# 1) GitHub helpers
+# 1) GitHub helpers (read/write)
 # ============================================================
 def _gh():
     gh = st.secrets.get("github", {})
@@ -130,8 +129,16 @@ def gh_write_file(path: str, txt: str, message: str) -> bool:
     return True
 
 
+def _clean_nans(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None:
+        return df
+    df = df.copy()
+    df = df.replace("nan", "").replace("NaN", "").fillna("")
+    return df
+
+
 # ============================================================
-# 2) LOG (Data/treino_log.csv)
+# 2) LOG (Data/treino_log.csv) — persistência (auto-save)
 # ============================================================
 GITHUB_LOG_PATH = "Data/treino_log.csv"
 LOG_COLUMNS = ["timestamp", "user", "dia", "grupo", "exercicio", "series_reps", "peso_kg", "feito"]
@@ -153,14 +160,12 @@ def load_history_from_github() -> pd.DataFrame:
             df[col] = "" if col not in ("peso_kg", "feito") else (0.0 if col == "peso_kg" else 0)
 
     df = df[LOG_COLUMNS].copy()
+    df = _clean_nans(df)
+
     df["peso_kg"] = pd.to_numeric(df["peso_kg"], errors="coerce").fillna(0.0)
     df["feito"] = pd.to_numeric(df["feito"], errors="coerce").fillna(0).astype(int)
-    df["timestamp"] = df["timestamp"].astype(str)
-    df["user"] = df["user"].astype(str)
-    df["dia"] = df["dia"].astype(str)
-    df["exercicio"] = df["exercicio"].astype(str)
-    df["grupo"] = df["grupo"].astype(str)
-    df["series_reps"] = df["series_reps"].astype(str)
+    for c in ["timestamp", "user", "dia", "grupo", "exercicio", "series_reps"]:
+        df[c] = df[c].astype(str)
     return df
 
 
@@ -183,8 +188,9 @@ def append_history_to_github(df_new: pd.DataFrame) -> bool:
     df_new["feito"] = pd.to_numeric(df_new["feito"], errors="coerce").fillna(0).astype(int)
 
     df_all = pd.concat([df_old, df_new], ignore_index=True)
-    csv_txt = df_all.to_csv(index=False, encoding="utf-8")
+    df_all = _clean_nans(df_all)
 
+    csv_txt = df_all.to_csv(index=False, encoding="utf-8")
     ok = gh_write_file(GITHUB_LOG_PATH, csv_txt, f"append treino log {_now_utc_z()}")
     if ok:
         load_history_from_github.clear()
@@ -195,7 +201,7 @@ def _autolog_debounced(user: str, day: str, group: str, exercise_name: str, reps
     """
     Auto-salva no treino_log.csv com debounce (evita spammar commits no GitHub).
     """
-    k = f"__last_autosave__{user}__{day}__{exercise_name}"
+    k = f"__last_autosave__{user}__{day}"
     now = time.time()
     last = float(st.session_state.get(k, 0.0) or 0.0)
     if now - last < 1.2:
@@ -219,7 +225,7 @@ def _autolog_debounced(user: str, day: str, group: str, exercise_name: str, reps
 
 
 # ============================================================
-# 3) TREINOS (Data/treinos.csv)  — mantém seu formato atual
+# 3) Treinos em CSV (Data/treinos.csv)
 # ============================================================
 GITHUB_TREINOS_PATH = "Data/treinos.csv"
 TREINOS_COLUMNS = ["user", "dia", "ordem", "grupo", "exercicio", "series_reps", "gif_key", "alt_group"]
@@ -241,6 +247,8 @@ def load_treinos_from_github() -> pd.DataFrame:
             df[col] = ""
 
     df = df[TREINOS_COLUMNS].copy()
+    df = _clean_nans(df)
+
     df["user"] = df["user"].astype(str)
     df["dia"] = df["dia"].astype(str)
     df["ordem"] = pd.to_numeric(df["ordem"], errors="coerce").fillna(9999).astype(int)
@@ -256,9 +264,9 @@ def save_treinos_to_github(df_all: pd.DataFrame) -> bool:
     for col in TREINOS_COLUMNS:
         if col not in df_all.columns:
             df_all[col] = ""
-
     df_all = df_all[TREINOS_COLUMNS].copy()
     df_all["ordem"] = pd.to_numeric(df_all["ordem"], errors="coerce").fillna(9999).astype(int)
+    df_all = _clean_nans(df_all)
 
     csv_txt = df_all.to_csv(index=False, encoding="utf-8")
     ok = gh_write_file(GITHUB_TREINOS_PATH, csv_txt, f"update treinos {_now_utc_z()}")
@@ -267,104 +275,9 @@ def save_treinos_to_github(df_all: pd.DataFrame) -> bool:
     return ok
 
 
-# ============================================================
-# 4) EXERCÍCIOS (Data/exercicios.csv) — agora com gif_url (Opção B)
-# Mantém compatível com seu header atual:
-# exercicio,grupo,gif_key,alt_group,observacoes
-# e adiciona gif_url se não existir.
-# ============================================================
-GITHUB_EXERCICIOS_PATH = "Data/exercicios.csv"
-EX_COLUMNS_CANON = ["exercicio", "grupo", "gif_key", "gif_url", "alt_group", "observacoes"]
-
-
-@st.cache_data(ttl=60)
-def load_exercicios_from_github() -> pd.DataFrame:
-    txt, _ = gh_read_file(GITHUB_EXERCICIOS_PATH)
-    if not (txt or "").strip():
-        return pd.DataFrame(columns=EX_COLUMNS_CANON)
-
-    try:
-        df = pd.read_csv(io.StringIO(txt))
-    except Exception:
-        return pd.DataFrame(columns=EX_COLUMNS_CANON)
-
-    # normaliza colunas
-    df.columns = [str(c).strip() for c in df.columns]
-
-    # adiciona colunas que faltam
-    for col in EX_COLUMNS_CANON:
-        if col not in df.columns:
-            df[col] = ""
-
-    df = df[EX_COLUMNS_CANON].copy()
-
-    # limpa NaN
-    for col in EX_COLUMNS_CANON:
-        df[col] = df[col].fillna("").astype(str)
-
-    # ordena por grupo + exercicio
-    df["_grp"] = df["grupo"].astype(str)
-    df["_ex"] = df["exercicio"].astype(str)
-    df = df.sort_values(["_grp", "_ex"], ascending=True).drop(columns=["_grp", "_ex"])
-    return df
-
-
-def save_exercicios_to_github(df_all: pd.DataFrame) -> bool:
-    for col in EX_COLUMNS_CANON:
-        if col not in df_all.columns:
-            df_all[col] = ""
-
-    df_all = df_all[EX_COLUMNS_CANON].copy()
-    for col in EX_COLUMNS_CANON:
-        df_all[col] = df_all[col].fillna("").astype(str)
-
-    csv_txt = df_all.to_csv(index=False, encoding="utf-8")
-    ok = gh_write_file(GITHUB_EXERCICIOS_PATH, csv_txt, f"update exercicios {_now_utc_z()}")
-    if ok:
-        load_exercicios_from_github.clear()
-    return ok
-
-
-def _gif_url_for(ex_df: pd.DataFrame, exercicio: str, gif_key: str) -> str:
-    """
-    Resolve o GIF assim:
-    1) se achar exercício no exercicios.csv e tiver gif_url -> usa
-    2) senão, se tiver gif_key e existir gif_url associado (coluna) -> usa
-    3) senão vazio
-    """
-    exercicio = (exercicio or "").strip()
-    gif_key = (gif_key or "").strip()
-
-    if ex_df is None or ex_df.empty:
-        return ""
-
-    # match por nome do exercício
-    if exercicio:
-        m = ex_df[ex_df["exercicio"].astype(str) == exercicio]
-        if not m.empty:
-            url = (m.iloc[0].get("gif_url", "") or "").strip()
-            if url:
-                return url
-
-    # match por gif_key
-    if gif_key:
-        m2 = ex_df[ex_df["gif_key"].astype(str) == gif_key]
-        if not m2.empty:
-            url = (m2.iloc[0].get("gif_url", "") or "").strip()
-            if url:
-                return url
-
-    return ""
-
-
-# ============================================================
-# 5) Helpers UI
-# ============================================================
-EDIT_DAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
-
-
 def _ensure_days_for_user(df_all: pd.DataFrame, user: str) -> pd.DataFrame:
-    """Garante registros (mesmo vazios) para Seg–Sex no treinos.csv daquele user."""
+    """Garante que existam registros (mesmo vazios) para Seg–Sex no treinos.csv daquele user."""
+    df_all = df_all.copy()
     dfu = df_all[df_all["user"].astype(str) == str(user)]
     existing_days = set(dfu["dia"].astype(str).unique().tolist())
 
@@ -385,9 +298,131 @@ def _ensure_days_for_user(df_all: pd.DataFrame, user: str) -> pd.DataFrame:
     if rows:
         df_all = pd.concat([df_all, pd.DataFrame(rows)], ignore_index=True)
 
-    return df_all
+    return _clean_nans(df_all)
 
 
+# ============================================================
+# 3B) Exercícios em CSV (Data/exercicios.csv)  <<< GIF URL AQUI
+# ============================================================
+GITHUB_EXERCICIOS_PATH = "Data/exercicios.csv"
+EX_COLUMNS = ["exercicio", "grupo", "gif_key", "gif_url", "alt_group", "observacoes"]
+
+
+@st.cache_data(ttl=60)
+def load_exercicios_from_github() -> pd.DataFrame:
+    txt, _ = gh_read_file(GITHUB_EXERCICIOS_PATH)
+    if not (txt or "").strip():
+        return pd.DataFrame(columns=EX_COLUMNS)
+
+    try:
+        df = pd.read_csv(io.StringIO(txt))
+    except Exception:
+        return pd.DataFrame(columns=EX_COLUMNS)
+
+    for col in EX_COLUMNS:
+        if col not in df.columns:
+            df[col] = ""
+
+    df = df[EX_COLUMNS].copy()
+    df = _clean_nans(df)
+    for c in EX_COLUMNS:
+        df[c] = df[c].astype(str)
+    return df
+
+
+def save_exercicios_to_github(df_all: pd.DataFrame) -> bool:
+    for col in EX_COLUMNS:
+        if col not in df_all.columns:
+            df_all[col] = ""
+
+    df_all = df_all[EX_COLUMNS].copy()
+    df_all = _clean_nans(df_all)
+    for c in EX_COLUMNS:
+        df_all[c] = df_all[c].astype(str)
+
+    csv_txt = df_all.to_csv(index=False, encoding="utf-8")
+    ok = gh_write_file(GITHUB_EXERCICIOS_PATH, csv_txt, f"update exercicios {_now_utc_z()}")
+    if ok:
+        load_exercicios_from_github.clear()
+    return ok
+
+
+def _thumb_from_url(url: str) -> str:
+    return (url or "").strip()
+
+
+def _exercise_lookup(df_ex: pd.DataFrame) -> dict:
+    """
+    index por nome (lower) => row dict
+    """
+    m = {}
+    if df_ex is None or df_ex.empty:
+        return m
+    for _, r in df_ex.iterrows():
+        name = str(r.get("exercicio", "") or "").strip()
+        if not name:
+            continue
+        m[name.lower()] = {
+            "exercicio": name,
+            "grupo": str(r.get("grupo", "") or "").strip(),
+            "gif_key": str(r.get("gif_key", "") or "").strip(),
+            "gif_url": str(r.get("gif_url", "") or "").strip(),
+            "alt_group": str(r.get("alt_group", "") or "").strip(),
+            "observacoes": str(r.get("observacoes", "") or "").strip(),
+        }
+    return m
+
+
+def _workouts_from_treinos_csv(df_treinos: pd.DataFrame, df_ex: pd.DataFrame, user: str) -> dict:
+    """
+    Converte treinos.csv do user em dict:
+    { "Segunda": [ {grupo, exercicio, series_reps, gif_url}, ... ], ... }
+    - grupo/gif_url podem vir do exercicios.csv se estiverem vazios no treinos.csv.
+    """
+    workouts = {d: [] for d in EDIT_DAYS}
+    dfu = df_treinos[df_treinos["user"].astype(str) == str(user)].copy()
+    if dfu.empty:
+        return workouts
+
+    ex_map = _exercise_lookup(df_ex)
+
+    for d in EDIT_DAYS:
+        dfd = dfu[dfu["dia"].astype(str) == str(d)].copy()
+        dfd["ordem"] = pd.to_numeric(dfd["ordem"], errors="coerce").fillna(9999).astype(int)
+        dfd = dfd.sort_values("ordem", ascending=True)
+
+        dfd = dfd[dfd["exercicio"].astype(str).str.strip() != ""].copy()
+        rows = []
+        for _, r in dfd.iterrows():
+            ex_name = str(r.get("exercicio", "") or "").strip()
+            planned = str(r.get("series_reps", "") or "").strip()
+            grupo = str(r.get("grupo", "") or "").strip()
+            gif_url = ""
+            alt_group = str(r.get("alt_group", "") or "").strip()
+
+            ref = ex_map.get(ex_name.lower())
+            if ref:
+                if not grupo:
+                    grupo = ref.get("grupo", "") or ""
+                gif_url = ref.get("gif_url", "") or ""
+                if not alt_group:
+                    alt_group = ref.get("alt_group", "") or ""
+
+            rows.append({
+                "grupo": grupo,
+                "exercicio": ex_name,
+                "series_reps": planned,
+                "gif_url": gif_url,
+                "alt_group": alt_group,
+            })
+        workouts[d] = rows
+
+    return workouts
+
+
+# ============================================================
+# 6) Histórico: último peso (por usuário/dia/exercicio)
+# ============================================================
 def last_weight(df_history: pd.DataFrame, user: str, day: str, exercise_name: str) -> float:
     if df_history is None or df_history.empty:
         return 0.0
@@ -405,17 +440,8 @@ def last_weight(df_history: pd.DataFrame, user: str, day: str, exercise_name: st
         return 0.0
 
 
-def _open_ex_modal(action: str, rid: dict | None):
-    # IMPORTANT: fecha o modal do dia e abre o modal do exercício + rerun
-    st.session_state.edit_action = action
-    st.session_state.edit_row_id = rid
-    st.session_state.open_ex_modal = True
-    st.session_state.open_day_modal = False
-    st.rerun()
-
-
 # ============================================================
-# 6) TELAS
+# 7) TELAS
 # ============================================================
 def screen_login():
     st.title("Planner de Treinos")
@@ -453,6 +479,8 @@ def screen_menu():
     with colB:
         if st.button("✏️ Alterar treino", use_container_width=True):
             goto("editar_treino")
+        if st.button("🧩 Gerenciar exercícios", use_container_width=True):
+            goto("gerenciar_exercicios")
         if st.button("🗂 Histórico", use_container_width=True):
             goto("historico")
 
@@ -472,9 +500,13 @@ def screen_treino():
     df_ex = load_exercicios_from_github()
 
     df_treinos = _ensure_days_for_user(df_treinos, user)
+
+    # se teve que criar dias faltando, salva uma vez
     dfu_days = set(df_treinos[df_treinos["user"].astype(str) == str(user)]["dia"].astype(str).unique().tolist())
     if dfu_days != set(EDIT_DAYS):
         save_treinos_to_github(df_treinos)
+
+    WORKOUTS = _workouts_from_treinos_csv(df_treinos, df_ex, user)
 
     st.title(f"Treino — {user}")
 
@@ -498,30 +530,24 @@ def screen_treino():
     day = st.selectbox("Dia do treino", options=available_days, index=idx_default, key="day_picker")
     st.session_state.day_selected = day
 
-    dfu = df_treinos[df_treinos["user"].astype(str) == str(user)].copy()
-    dfd = dfu[dfu["dia"].astype(str) == str(day)].copy()
-    dfd["ordem"] = pd.to_numeric(dfd["ordem"], errors="coerce").fillna(9999).astype(int)
-    dfd = dfd.sort_values("ordem", ascending=True)
-    dfd = dfd[dfd["exercicio"].astype(str).str.strip() != ""].copy()
-
+    exercises = WORKOUTS.get(day, [])
     st.subheader(f"{day} — Exercícios")
 
-    if dfd.empty:
+    if not exercises:
         st.info("Esse dia ainda não tem exercícios. Vá em **Alterar treino** para adicionar.")
         return
 
     done_flags = []
 
-    for i, r in enumerate(dfd.to_dict("records")):
-        group = str(r.get("grupo", "") or "")
-        name = str(r.get("exercicio", "") or "")
-        planned_reps = str(r.get("series_reps", "") or "")
-        gif_key = str(r.get("gif_key", "") or "")
-        gif_url = _gif_url_for(df_ex, name, gif_key)
+    for idx, ex in enumerate(exercises):
+        group = str(ex.get("grupo", "") or "").strip()
+        name = str(ex.get("exercicio", "") or "").strip()
+        planned_reps = str(ex.get("series_reps", "") or "").strip()
+        gif_url = str(ex.get("gif_url", "") or "").strip()
 
-        reps_done_key = f"{user}_{day}_{i}_reps_done"
-        weight_key = f"{user}_{day}_{i}_peso"
-        done_key = f"{user}_{day}_{i}_feito"
+        reps_done_key = f"{user}_{day}_{idx}_reps_done"
+        weight_key = f"{user}_{day}_{idx}_peso"
+        done_key = f"{user}_{day}_{idx}_feito"
 
         if reps_done_key not in st.session_state:
             st.session_state[reps_done_key] = planned_reps
@@ -532,10 +558,10 @@ def screen_treino():
         if done_key not in st.session_state:
             st.session_state[done_key] = False
 
-        def _on_any_change(i_local=i, group_local=group, ex_name=name, planned_local=planned_reps):
-            reps_done_val = st.session_state.get(f"{user}_{day}_{i_local}_reps_done", planned_local)
-            weight_val = st.session_state.get(f"{user}_{day}_{i_local}_peso", 0.0)
-            done_val = st.session_state.get(f"{user}_{day}_{i_local}_feito", False)
+        def _on_any_change(idx_local=idx, group_local=group, ex_name=name, planned_local=planned_reps):
+            reps_done_val = st.session_state.get(f"{user}_{day}_{idx_local}_reps_done", planned_local)
+            weight_val = st.session_state.get(f"{user}_{day}_{idx_local}_peso", 0.0)
+            done_val = st.session_state.get(f"{user}_{day}_{idx_local}_feito", False)
 
             _autolog_debounced(
                 user=user,
@@ -548,7 +574,7 @@ def screen_treino():
             )
 
         st.markdown(f"### {name}")
-        if group.strip() and group.lower() != "nan":
+        if group:
             st.caption(group)
 
         cols = st.columns([2, 1])
@@ -556,7 +582,7 @@ def screen_treino():
             if gif_url:
                 st.image(gif_url, width=260)
             else:
-                st.info("Sem GIF disponível (cadastre a URL em Exercícios)")
+                st.info("Sem GIF disponível (cadastre no Gerenciar exercícios).")
 
         with cols[1]:
             st.write(f"● Planejado: **{planned_reps}**")
@@ -589,9 +615,8 @@ def screen_treino():
             st.dataframe(dfh, use_container_width=True, height=280)
     with c2:
         if st.button("🧹 Limpar (só tela)", use_container_width=True):
-            # não apaga histórico, só a tela
-            for i in range(len(dfd)):
-                st.session_state[f"{user}_{day}_{i}_reps_done"] = str(dfd.iloc[i].get("series_reps", "") or "")
+            for i in range(len(exercises)):
+                st.session_state[f"{user}_{day}_{i}_reps_done"] = exercises[i].get("series_reps", "")
                 st.session_state[f"{user}_{day}_{i}_peso"] = 0.0
                 st.session_state[f"{user}_{day}_{i}_feito"] = False
             st.info("Campos zerados (histórico no GitHub continua).")
@@ -650,7 +675,9 @@ def screen_graficos():
 
 
 # ============================================================
-# Tela: editar treino (modais + lista de exercícios cadastrados)
+# Tela: Editar treino (cards de dias + modais)
+#   - Escolhe exercício a partir do Data/exercicios.csv
+#   - Grupo e GIF ficam padrão do cadastro (mas você pode sobrescrever)
 # ============================================================
 def screen_editar_treino():
     user = st.session_state.user
@@ -658,8 +685,7 @@ def screen_editar_treino():
         goto("login")
 
     st.title("✏️ Editar treino")
-
-    top1, top2, top3 = st.columns([1, 1, 1])
+    top1, top2 = st.columns([1, 1])
     with top1:
         if st.button("⬅️ Voltar", use_container_width=True):
             goto("menu")
@@ -667,9 +693,6 @@ def screen_editar_treino():
         if st.button("🔁 Trocar usuário", use_container_width=True):
             st.session_state.user = None
             goto("login")
-    with top3:
-        if st.button("➕ Cadastrar novo exercício", use_container_width=True):
-            st.session_state.open_new_ex_modal = True
 
     st.markdown("---")
 
@@ -681,8 +704,9 @@ def screen_editar_treino():
         save_treinos_to_github(df_all)
 
     df_ex = load_exercicios_from_github()
+    ex_map = _exercise_lookup(df_ex)
+    ex_names = sorted([v["exercicio"] for v in ex_map.values()])
 
-    # ====== GRID de dias
     st.subheader("Escolha um dia para editar")
     cols = st.columns(5)
     for i, d in enumerate(EDIT_DAYS):
@@ -690,86 +714,15 @@ def screen_editar_treino():
             if st.button(d, use_container_width=True, key=f"btn_day_{d}"):
                 st.session_state.edit_day = d
                 st.session_state.open_day_modal = True
+                st.rerun()
 
     if st.session_state.edit_day not in EDIT_DAYS:
         st.session_state.edit_day = "Segunda"
     day = st.session_state.edit_day
 
-    # ============================================================
-    # Modal: cadastrar novo exercício
-    # ============================================================
-    if st.session_state.open_new_ex_modal:
-
-        @st.dialog("➕ Cadastrar novo exercício", width="large")
-        def new_ex_modal():
-            nonlocal df_ex
-
-            st.caption("Isso salva no **Data/exercicios.csv** no GitHub. Depois já aparece na lista pra montar treinos.")
-
-            c1, c2 = st.columns(2)
-            with c1:
-                ex_name = st.text_input("Nome do exercício (ex: Supino reto na barra)")
-                group = st.text_input("Grupo muscular (ex: Peito)")
-                gif_key = st.text_input("gif_key (opcional, se você quiser manter um padrão)", value=_safe_id(ex_name))
-            with c2:
-                gif_url = st.text_input("GIF URL (cole o link do gif aqui)")
-                alt_group = st.text_input("alt_group (opcional)")
-                obs = st.text_area("Observações (opcional)", height=90)
-
-            if gif_url and not (gif_url.startswith("http://") or gif_url.startswith("https://")):
-                st.warning("O GIF URL precisa começar com http:// ou https://")
-
-            st.markdown("---")
-            a, b = st.columns(2)
-
-            with a:
-                if st.button("Salvar exercício", use_container_width=True):
-                    if not ex_name.strip():
-                        st.error("Preencha o nome do exercício.")
-                        return
-                    if not group.strip():
-                        st.error("Preencha o grupo muscular.")
-                        return
-
-                    # garante colunas
-                    for col in EX_COLUMNS_CANON:
-                        if col not in df_ex.columns:
-                            df_ex[col] = ""
-
-                    # evita duplicar pelo nome
-                    exists = df_ex[df_ex["exercicio"].astype(str) == ex_name.strip()]
-                    if not exists.empty:
-                        st.warning("Já existe um exercício com esse nome. Vou atualizar o registro existente.")
-                        df_ex = df_ex[df_ex["exercicio"].astype(str) != ex_name.strip()].copy()
-
-                    new_row = pd.DataFrame([{
-                        "exercicio": ex_name.strip(),
-                        "grupo": group.strip(),
-                        "gif_key": (gif_key or "").strip(),
-                        "gif_url": (gif_url or "").strip(),
-                        "alt_group": (alt_group or "").strip(),
-                        "observacoes": (obs or "").strip(),
-                    }])
-
-                    df_ex2 = pd.concat([df_ex, new_row], ignore_index=True)
-
-                    if save_exercicios_to_github(df_ex2):
-                        st.success("Exercício cadastrado ✅")
-                        st.session_state.open_new_ex_modal = False
-                        st.rerun()
-                    else:
-                        st.error("Falha ao salvar no GitHub.")
-
-            with b:
-                if st.button("Cancelar", use_container_width=True):
-                    st.session_state.open_new_ex_modal = False
-                    st.rerun()
-
-        new_ex_modal()
-
-    # ============================================================
-    # Modal do dia (lista de exercícios do dia)
-    # ============================================================
+    # =========
+    # Modal do dia
+    # =========
     if st.session_state.open_day_modal:
 
         @st.dialog(f"📅 {day} — Exercícios", width="large")
@@ -780,12 +733,16 @@ def screen_editar_treino():
             dfd = dfu[dfu["dia"].astype(str) == str(day)].copy()
             dfd["ordem"] = pd.to_numeric(dfd["ordem"], errors="coerce").fillna(9999).astype(int)
             dfd = dfd.sort_values("ordem", ascending=True)
-            dfd_show = dfd[dfd["exercicio"].astype(str).str.strip() != ""].copy()
 
-            st.caption("Use + para adicionar. Clique em editar para alterar. Agora abre na hora ✅")
+            dfd_show = dfd[dfd["exercicio"].astype(str).str.strip() != ""].copy()
+            st.caption("Clique em um exercício para editar. Use + para adicionar novos.")
 
             if st.button("➕ Adicionar exercício", use_container_width=True):
-                _open_ex_modal("add", None)
+                st.session_state.edit_action = "add"
+                st.session_state.edit_row_id = None
+                st.session_state.open_day_modal = False
+                st.session_state.open_ex_modal = True
+                st.rerun()
 
             st.markdown("---")
 
@@ -794,37 +751,42 @@ def screen_editar_treino():
             else:
                 for _, r in dfd_show.iterrows():
                     ordem = int(r.get("ordem", 9999))
-                    grupo = str(r.get("grupo", "") or "")
-                    exercicio = str(r.get("exercicio", "") or "")
-                    series = str(r.get("series_reps", "") or "")
-                    gif_key = str(r.get("gif_key", "") or "")
-                    alt_group = str(r.get("alt_group", "") or "")
+                    exercicio = str(r.get("exercicio", "") or "").strip()
+                    series = str(r.get("series_reps", "") or "").strip()
+                    grupo = str(r.get("grupo", "") or "").strip()
+                    alt_group = str(r.get("alt_group", "") or "").strip()
 
-                    thumb = _gif_url_for(df_ex, exercicio, gif_key)
+                    # preview via exercicios.csv
+                    ref = ex_map.get(exercicio.lower())
+                    gif_url = ref.get("gif_url", "") if ref else ""
+                    grupo_show = grupo if grupo else (ref.get("grupo", "") if ref else "")
 
                     cA, cB, cC = st.columns([1, 4, 2], vertical_alignment="center")
-
                     with cA:
-                        if thumb:
-                            st.image(thumb, width=70)
+                        if gif_url:
+                            st.image(gif_url, width=70)
                         else:
                             st.caption("sem gif")
 
                     with cB:
                         st.markdown(f"**{ordem}. {exercicio}**")
                         meta = []
-                        if grupo.strip() and grupo.lower() != "nan":
-                            meta.append(grupo)
-                        if series.strip() and series.lower() != "nan":
+                        if grupo_show:
+                            meta.append(grupo_show)
+                        if series:
                             meta.append(f"Séries: {series}")
-                        if alt_group.strip() and alt_group.lower() != "nan":
-                            meta.append(f"alt: {alt_group}")
+                        if alt_group:
+                            meta.append(f"alt_group: `{alt_group}`")
                         if meta:
                             st.caption(" · ".join(meta))
 
                     with cC:
                         if st.button("✏️ Editar", key=f"edit_{day}_{ordem}_{exercicio}", use_container_width=True):
-                            _open_ex_modal("edit", {"day": day, "ordem": ordem, "exercicio": exercicio})
+                            st.session_state.edit_action = "edit"
+                            st.session_state.edit_row_id = {"day": day, "ordem": ordem, "exercicio": exercicio}
+                            st.session_state.open_day_modal = False
+                            st.session_state.open_ex_modal = True
+                            st.rerun()
 
                         if st.button("🗑️ Remover", key=f"del_{day}_{ordem}_{exercicio}", use_container_width=True):
                             mask = (
@@ -833,13 +795,12 @@ def screen_editar_treino():
                                 (pd.to_numeric(df_all["ordem"], errors="coerce").fillna(9999).astype(int) == ordem) &
                                 (df_all["exercicio"].astype(str) == str(exercicio))
                             )
-                            df_all2 = df_all[~mask].copy()
-                            if save_treinos_to_github(df_all2):
+                            df_all = df_all[~mask].copy()
+                            if save_treinos_to_github(df_all):
                                 st.success("Removido ✅")
                                 st.rerun()
                             else:
                                 st.error("Falha ao salvar no GitHub.")
-
                     st.divider()
 
             if st.button("Fechar", use_container_width=True):
@@ -848,20 +809,24 @@ def screen_editar_treino():
 
         day_modal()
 
-    # ============================================================
+    # =========
     # Modal: adicionar/editar exercício do dia
-    # ============================================================
+    # =========
     if st.session_state.open_ex_modal:
         action = st.session_state.edit_action
 
-        @st.dialog("🧩 Exercício — adicionar / editar", width="large")
+        @st.dialog("🧩 Exercício do dia — adicionar/editar", width="large")
         def ex_modal():
             nonlocal df_all
 
-            # defaults do registro atual (se edit)
-            default_ordem = 1
-            default_exercicio = ""
+            dfu = df_all[df_all["user"].astype(str) == str(user)].copy()
+            dfd = dfu[dfu["dia"].astype(str) == str(day)].copy()
+            dfd["ordem"] = pd.to_numeric(dfd["ordem"], errors="coerce").fillna(9999).astype(int)
+
+            default_ordem = int(dfd["ordem"].max()) + 1 if not dfd.empty else 1
+            default_ex = ""
             default_series = ""
+            default_grupo_override = ""
             default_alt_group = ""
 
             if action == "edit" and st.session_state.edit_row_id:
@@ -878,131 +843,104 @@ def screen_editar_treino():
                 if not row.empty:
                     rr = row.iloc[0]
                     default_ordem = int(pd.to_numeric(rr.get("ordem", ordem0), errors="coerce") or ordem0)
-                    default_exercicio = str(rr.get("exercicio", "") or "")
+                    default_ex = str(rr.get("exercicio", "") or "")
                     default_series = str(rr.get("series_reps", "") or "")
+                    default_grupo_override = str(rr.get("grupo", "") or "")
                     default_alt_group = str(rr.get("alt_group", "") or "")
 
-            else:
-                # add -> próxima ordem
-                dfu = df_all[(df_all["user"].astype(str) == str(user)) & (df_all["dia"].astype(str) == str(day))].copy()
-                dfu["ordem"] = pd.to_numeric(dfu["ordem"], errors="coerce").fillna(0).astype(int)
-                default_ordem = int(dfu["ordem"].max()) + 1 if not dfu.empty else 1
+            st.caption("Escolha um exercício cadastrado. Grupo e GIF vêm do cadastro (você pode sobrescrever o grupo se quiser).")
 
-            st.caption("Selecione um exercício cadastrado (com GIF + grupo automático).")
+            c1, c2 = st.columns(2)
 
-            # lista do catálogo
-            df_ex_local = df_ex.copy()
-            df_ex_local = df_ex_local[df_ex_local["exercicio"].astype(str).str.strip() != ""].copy()
-
-            if df_ex_local.empty:
-                st.warning("Seu Data/exercicios.csv está vazio. Cadastre exercícios primeiro.")
-                if st.button("➕ Cadastrar novo exercício agora", use_container_width=True):
-                    st.session_state.open_ex_modal = False
-                    st.session_state.open_new_ex_modal = True
-                    st.rerun()
-                return
-
-            # busca
-            q = st.text_input("Buscar exercício (nome ou grupo)", value="")
-            if q.strip():
-                qq = q.strip().lower()
-                df_ex_local = df_ex_local[
-                    df_ex_local["exercicio"].astype(str).str.lower().str.contains(qq) |
-                    df_ex_local["grupo"].astype(str).str.lower().str.contains(qq)
-                ].copy()
-
-            # opções (label = "Exercício — Grupo")
-            opts = []
-            map_label_to_name = {}
-            for _, r in df_ex_local.iterrows():
-                exn = str(r.get("exercicio", "") or "").strip()
-                grp = str(r.get("grupo", "") or "").strip()
-                if not exn:
-                    continue
-                label = f"{exn} — {grp}" if grp else exn
-                opts.append(label)
-                map_label_to_name[label] = exn
-
-            opts = sorted(list(dict.fromkeys(opts)))
-
-            # pré-seleção
-            pre_label = None
-            if default_exercicio:
-                for lb, exn in map_label_to_name.items():
-                    if exn == default_exercicio:
-                        pre_label = lb
-                        break
-            if pre_label is None and opts:
-                pre_label = opts[0]
-
-            c1, c2 = st.columns([2, 1])
             with c1:
                 ordem = st.number_input("Ordem", min_value=1, step=1, value=int(default_ordem))
-                picked = st.selectbox("Exercício", options=opts, index=opts.index(pre_label) if pre_label in opts else 0)
-                chosen_ex = map_label_to_name.get(picked, "")
-                # puxa do catálogo
-                row_ex = df_ex[df_ex["exercicio"].astype(str) == str(chosen_ex)]
-                grp = str(row_ex.iloc[0].get("grupo", "") or "") if not row_ex.empty else ""
-                gif_key = str(row_ex.iloc[0].get("gif_key", "") or "") if not row_ex.empty else ""
-                gif_url = str(row_ex.iloc[0].get("gif_url", "") or "") if not row_ex.empty else ""
-                if not gif_url:
-                    gif_url = _gif_url_for(df_ex, chosen_ex, gif_key)
 
-                st.text_input("Grupo (automático)", value=grp, disabled=True)
+                # Select do exercício (biblioteca)
+                options = ["(selecionar...)"] + ex_names
+                idx = 0
+                if default_ex and default_ex in ex_names:
+                    idx = options.index(default_ex)
+                selected_ex = st.selectbox("Exercício (biblioteca)", options=options, index=idx)
 
-                series = st.text_input("Séries x Reps", value=default_series if default_series and default_series.lower() != "nan" else "")
-                alt_group = st.text_input("alt_group (opcional)", value=default_alt_group if default_alt_group and default_alt_group.lower() != "nan" else "")
+                # fallback manual se não tiver cadastrado
+                manual = False
+                if selected_ex == "(selecionar...)":
+                    manual = True
+
+                if manual:
+                    exercicio = st.text_input("Nome do exercício (manual)", value=default_ex)
+                else:
+                    exercicio = selected_ex
+
+                series = st.text_input("Séries x Reps", value=default_series)
 
             with c2:
-                if gif_url:
-                    st.image(gif_url, width=160)
-                else:
-                    st.info("Sem GIF (cadastre o gif_url no Exercícios)")
+                ref = ex_map.get(str(exercicio).strip().lower())
+                grupo_padrao = ref.get("grupo", "") if ref else ""
+                gif_url = ref.get("gif_url", "") if ref else ""
+                alt_group_padrao = ref.get("alt_group", "") if ref else ""
 
-                st.caption("Dica: Se quiser cadastrar um novo exercício, volte e use o botão **Cadastrar novo exercício**.")
+                grupo_override = st.text_input("Grupo (opcional — se vazio usa o padrão)", value=default_grupo_override)
+                alt_group = st.text_input("alt_group (opcional)", value=(default_alt_group or alt_group_padrao))
+
+                if gif_url:
+                    st.image(gif_url, width=180)
+                else:
+                    st.info("Sem preview (cadastre o GIF em Gerenciar exercícios).")
+
+                if grupo_override.strip():
+                    st.caption(f"Grupo exibido: **{grupo_override.strip()}**")
+                elif grupo_padrao.strip():
+                    st.caption(f"Grupo exibido: **{grupo_padrao.strip()}**")
+                else:
+                    st.caption("Grupo exibido: (vazio)")
 
             st.markdown("---")
             a, b = st.columns(2)
 
             with a:
                 if st.button("💾 Salvar", use_container_width=True):
-                    if not chosen_ex.strip():
-                        st.error("Selecione um exercício.")
+                    if not str(exercicio or "").strip():
+                        st.error("Escolha ou preencha o exercício.")
                         return
 
-                    # remove antigo (se edit)
-                    df_all2 = df_all.copy()
+                    # remove antigo se edit
                     if action == "edit" and st.session_state.edit_row_id:
                         rid = st.session_state.edit_row_id
                         ordem0 = int(rid["ordem"])
                         ex0 = str(rid["exercicio"])
                         mask_old = (
-                            (df_all2["user"].astype(str) == str(user)) &
-                            (df_all2["dia"].astype(str) == str(day)) &
-                            (pd.to_numeric(df_all2["ordem"], errors="coerce").fillna(9999).astype(int) == ordem0) &
-                            (df_all2["exercicio"].astype(str) == ex0)
+                            (df_all["user"].astype(str) == str(user)) &
+                            (df_all["dia"].astype(str) == str(day)) &
+                            (pd.to_numeric(df_all["ordem"], errors="coerce").fillna(9999).astype(int) == ordem0) &
+                            (df_all["exercicio"].astype(str) == ex0)
                         )
-                        df_all2 = df_all2[~mask_old].copy()
+                        df_all = df_all[~mask_old].copy()
+
+                    # grupo: override > cadastro > vazio
+                    ref2 = ex_map.get(str(exercicio).strip().lower())
+                    grupo_final = (grupo_override or "").strip()
+                    if not grupo_final:
+                        grupo_final = (ref2.get("grupo", "") if ref2 else "").strip()
 
                     new_row = pd.DataFrame([{
                         "user": user,
                         "dia": day,
                         "ordem": int(ordem),
-                        "grupo": (grp or "").strip(),
-                        "exercicio": chosen_ex.strip(),
-                        "series_reps": (series or "").strip(),
-                        "gif_key": (gif_key or "").strip(),
-                        "alt_group": (alt_group or "").strip(),
+                        "grupo": grupo_final,
+                        "exercicio": str(exercicio).strip(),
+                        "series_reps": str(series or "").strip(),
+                        "gif_key": (ref2.get("gif_key", "") if ref2 else ""),
+                        "alt_group": str(alt_group or "").strip(),
                     }], columns=TREINOS_COLUMNS)
 
-                    df_all2 = pd.concat([df_all2, new_row], ignore_index=True)
+                    df_all = pd.concat([df_all, new_row], ignore_index=True)
 
-                    if save_treinos_to_github(df_all2):
+                    if save_treinos_to_github(df_all):
                         st.success("Salvo ✅")
                         st.session_state.open_ex_modal = False
                         st.session_state.edit_action = None
                         st.session_state.edit_row_id = None
-                        st.session_state.open_day_modal = True  # volta pro modal do dia já aberto
                         st.rerun()
                     else:
                         st.error("Falha ao salvar no GitHub.")
@@ -1012,17 +950,213 @@ def screen_editar_treino():
                     st.session_state.open_ex_modal = False
                     st.session_state.edit_action = None
                     st.session_state.edit_row_id = None
-                    st.session_state.open_day_modal = True
                     st.rerun()
 
         ex_modal()
 
     st.markdown("---")
-    st.caption("Agora os GIFs vêm do Data/exercicios.csv (coluna gif_url). Você cadastra colando a URL ✅")
+    st.caption("Dica: cadastre todos os exercícios + GIFs em **Gerenciar exercícios**. Depois editar treino fica bem rápido.")
 
 
 # ============================================================
-# 7) Router principal
+# Tela: Gerenciar exercícios (listar/editar/excluir)
+# ============================================================
+def screen_gerenciar_exercicios():
+    user = st.session_state.user
+    if not user:
+        goto("login")
+
+    st.title("🧩 Gerenciar exercícios")
+    top1, top2 = st.columns([1, 1])
+    with top1:
+        if st.button("⬅️ Voltar", use_container_width=True):
+            goto("menu")
+    with top2:
+        if st.button("🔁 Trocar usuário", use_container_width=True):
+            st.session_state.user = None
+            goto("login")
+
+    st.markdown("---")
+
+    df_ex = load_exercicios_from_github()
+    df_ex = _clean_nans(df_ex)
+
+    # filtros
+    c1, c2, c3 = st.columns([2, 2, 1])
+    with c1:
+        q = st.text_input("Buscar (nome do exercício)", value="", placeholder="Ex: Supino, Remada, Abdutora…")
+    with c2:
+        grupos = sorted([g for g in df_ex["grupo"].astype(str).unique().tolist() if str(g).strip() != ""])
+        grupo_sel = st.selectbox("Filtrar por grupo", options=["(todos)"] + grupos)
+    with c3:
+        if st.button("➕ Novo", use_container_width=True):
+            st.session_state.ex_action = "add"
+            st.session_state.ex_edit_name = ""
+            st.session_state.open_exercise_modal = True
+            st.rerun()
+
+    df_show = df_ex.copy()
+    if q.strip():
+        df_show = df_show[df_show["exercicio"].astype(str).str.contains(q.strip(), case=False, na=False)]
+    if grupo_sel != "(todos)":
+        df_show = df_show[df_show["grupo"].astype(str) == str(grupo_sel)]
+
+    df_show = df_show.sort_values(["grupo", "exercicio"], ascending=True)
+
+    st.caption(f"Total: {len(df_show)} exercício(s)")
+
+    if df_show.empty:
+        st.info("Nenhum exercício encontrado.")
+    else:
+        for _, r in df_show.iterrows():
+            ex_name = str(r.get("exercicio", "") or "").strip()
+            grupo = str(r.get("grupo", "") or "").strip()
+            gif_key = str(r.get("gif_key", "") or "").strip()
+            gif_url = str(r.get("gif_url", "") or "").strip()
+            alt_group = str(r.get("alt_group", "") or "").strip()
+            obs = str(r.get("observacoes", "") or "").strip()
+
+            thumb = _thumb_from_url(gif_url)
+
+            cA, cB, cC = st.columns([1, 4, 2], vertical_alignment="center")
+            with cA:
+                if thumb:
+                    st.image(thumb, width=70)
+                else:
+                    st.caption("sem gif")
+
+            with cB:
+                st.markdown(f"**{ex_name}**")
+                meta = []
+                if grupo:
+                    meta.append(grupo)
+                if gif_key:
+                    meta.append(f"gif_key: `{gif_key}`")
+                if alt_group:
+                    meta.append(f"alt_group: `{alt_group}`")
+                if meta:
+                    st.caption(" · ".join(meta))
+                if obs:
+                    st.caption(f"📝 {obs}")
+
+            with cC:
+                if st.button("✏️ Editar", key=f"ex_edit_{ex_name}", use_container_width=True):
+                    st.session_state.ex_action = "edit"
+                    st.session_state.ex_edit_name = ex_name
+                    st.session_state.open_exercise_modal = True
+                    st.rerun()
+
+                if st.button("🗑️ Excluir", key=f"ex_del_{ex_name}", use_container_width=True):
+                    df_new = df_ex[df_ex["exercicio"].astype(str) != ex_name].copy()
+                    ok = save_exercicios_to_github(df_new)
+                    if ok:
+                        st.success("Excluído ✅")
+                        st.rerun()
+                    else:
+                        st.error("Não consegui salvar no GitHub.")
+
+            st.divider()
+
+    # Modal add/edit
+    if st.session_state.open_exercise_modal:
+        action = st.session_state.ex_action
+        edit_name = str(st.session_state.ex_edit_name or "").strip()
+
+        @st.dialog("🧩 Exercício — adicionar/editar", width="large")
+        def exercise_modal():
+            nonlocal df_ex
+
+            d_exercicio = ""
+            d_grupo = ""
+            d_gif_key = ""
+            d_gif_url = ""
+            d_alt_group = ""
+            d_obs = ""
+
+            if action == "edit" and edit_name:
+                row = df_ex[df_ex["exercicio"].astype(str) == edit_name]
+                if not row.empty:
+                    rr = row.iloc[0]
+                    d_exercicio = str(rr.get("exercicio", "") or "")
+                    d_grupo = str(rr.get("grupo", "") or "")
+                    d_gif_key = str(rr.get("gif_key", "") or "")
+                    d_gif_url = str(rr.get("gif_url", "") or "")
+                    d_alt_group = str(rr.get("alt_group", "") or "")
+                    d_obs = str(rr.get("observacoes", "") or "")
+
+            st.caption("Cole a URL do GIF para aparecer no treino e no editor.")
+
+            c1, c2 = st.columns(2)
+            with c1:
+                exercicio = st.text_input("Nome do exercício", value=d_exercicio, placeholder="Ex: Supino inclinado com halteres")
+                grupo = st.text_input("Grupo muscular", value=d_grupo, placeholder="Ex: Peito / Tríceps / Ombro…")
+                alt_group = st.text_input("alt_group (opcional)", value=d_alt_group, placeholder="Use para agrupar variações")
+                observacoes = st.text_area("Observações (opcional)", value=d_obs, height=90)
+
+            with c2:
+                gif_key = st.text_input("gif_key (opcional)", value=d_gif_key, placeholder="Ex: supino_inclinado_db")
+                gif_url = st.text_input("gif_url (cole a URL do GIF)", value=d_gif_url, placeholder="https://...gif")
+                thumb = _thumb_from_url(gif_url)
+                if thumb:
+                    st.image(thumb, width=200)
+                else:
+                    st.info("Sem preview (cole a URL do GIF).")
+
+            st.markdown("---")
+            a, b = st.columns(2)
+
+            with a:
+                if st.button("💾 Salvar", use_container_width=True):
+                    if not (exercicio or "").strip():
+                        st.error("Preencha o nome do exercício.")
+                        return
+
+                    exercicio_clean = exercicio.strip()
+
+                    # se editando e mudou o nome, remove antigo
+                    if action == "edit" and edit_name:
+                        df_ex = df_ex[df_ex["exercicio"].astype(str) != edit_name].copy()
+
+                    # evita duplicado por nome (case-insensitive)
+                    existing = df_ex["exercicio"].astype(str).str.lower().tolist()
+                    if exercicio_clean.lower() in existing:
+                        st.error("Já existe um exercício com esse nome. Use outro nome ou edite o existente.")
+                        return
+
+                    new_row = pd.DataFrame([{
+                        "exercicio": exercicio_clean,
+                        "grupo": (grupo or "").strip(),
+                        "gif_key": (gif_key or "").strip(),
+                        "gif_url": (gif_url or "").strip(),
+                        "alt_group": (alt_group or "").strip(),
+                        "observacoes": (observacoes or "").strip(),
+                    }], columns=EX_COLUMNS)
+
+                    df_ex = pd.concat([df_ex, new_row], ignore_index=True)
+                    df_ex = _clean_nans(df_ex)
+
+                    ok = save_exercicios_to_github(df_ex)
+                    if ok:
+                        st.success("Salvo ✅")
+                        st.session_state.open_exercise_modal = False
+                        st.session_state.ex_action = None
+                        st.session_state.ex_edit_name = ""
+                        st.rerun()
+                    else:
+                        st.error("Falha ao salvar no GitHub.")
+
+            with b:
+                if st.button("Cancelar", use_container_width=True):
+                    st.session_state.open_exercise_modal = False
+                    st.session_state.ex_action = None
+                    st.session_state.ex_edit_name = ""
+                    st.rerun()
+
+        exercise_modal()
+
+
+# ============================================================
+# 8) Router principal
 # ============================================================
 def main():
     init_state()
@@ -1034,6 +1168,7 @@ def main():
         "historico": screen_historico,
         "graficos": screen_graficos,
         "editar_treino": screen_editar_treino,
+        "gerenciar_exercicios": screen_gerenciar_exercicios,
     }
 
     screens.get(st.session_state.screen, screen_login)()
