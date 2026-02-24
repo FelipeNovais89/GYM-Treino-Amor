@@ -22,7 +22,6 @@ Búlgaro,Pernas,bulgaro,https://fitnessprogramer.com/wp-content/uploads/2021/05/
 Leg Press 45°,Pernas,leg_press,https://fitnessprogramer.com/wp-content/uploads/2015/11/Leg-Press.gif,,
 Leg press,Pernas,leg_press,https://fitnessprogramer.com/wp-content/uploads/2015/11/Leg-Press.gif,,
 Cadeira flexora,Posterior,leg_curl_seated,https://fitnessprogramer.com/wp-content/uploads/2015/11/Seated-Leg-Curl.gif,Mesa flexora,Alternativa para Mesa flexora
-Mesa flexora,Posterior,leg_curl_lying,https://fitnessprogramer.com/wp-content/uploads/2015/11/Leg-Curl.gif,Mesa flexora,
 Stiff unilateral,Posterior,stiff,https://fitnessprogramer.com/wp-content/uploads/2022/01/Stiff-Leg-Deadlift.gif,,
 Cadeira extensora,Quadríceps,leg_extension,https://fitnessprogramer.com/wp-content/uploads/2021/02/LEG-EXTENSION.gif,,
 Tríceps Testa com Barra (Lying Barbell Triceps Extension),Tríceps,triceps_barbell_lying,https://fitnessprogramer.com/wp-content/uploads/2021/02/Barbell-Triceps-Extension.gif,,
@@ -45,3 +44,4 @@ Cable Lateral Raise,arm,Elevação lateral na polia,https://fitnessprogramer.com
 ROPE PUSHDOWN,,Polia Alta Triceps Corda,https://fitnessprogramer.com/wp-content/uploads/2021/06/Rope-Pushdown.gif,,
 Dumbbell Sumo Squat,,Agachamento sumo halter,https://fitnessprogramer.com/wp-content/uploads/2021/02/dumbbell-sumo-squat.gif,,
 Smith Machine Lunge,,Afundo na barra guiada,https://fitnessprogramer.com/wp-content/uploads/2022/07/Smith-Machine-Lunge.gif,,
+Mesa flexora / lever leg curl,Posterior,leg_curl_lying,https://fitnessprogramer.com/wp-content/uploads/2021/06/Lever-Single-Leg-Curl.gif,Mesa flexora,
